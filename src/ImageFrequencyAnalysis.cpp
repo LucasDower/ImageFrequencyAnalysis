@@ -2,6 +2,8 @@
 #include <iostream>
 #include <array>
 #include <vector>
+#include <complex>
+#include <cmath>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -101,7 +103,7 @@ int Powerof2(int n, int* m, int* twopm)
         return true;
 }
 
-int FFT2D(double** re, double** im, int nx, int ny, int dir)
+int FFT2D(complex<double>** arr, int nx, int ny, int dir)
 {
     int i, j;
     int m, twopm;
@@ -116,13 +118,13 @@ int FFT2D(double** re, double** im, int nx, int ny, int dir)
         return false;
     for (j = 0; j < ny; j++) {
         for (i = 0; i < nx; i++) {
-            real[i] = re[i][j];
-            imag[i] = im[i][j];
+            real[i] = arr[i][j].real();
+            imag[i] = arr[i][j].imag();
         }
         FFT(dir, m, real, imag);
         for (i = 0; i < nx; i++) {
-            re[i][j] = real[i];
-            im[i][j] = imag[i];
+            arr[i][j].real(real[i]);
+            arr[i][j].imag(imag[i]);
         }
     }
     free(real);
@@ -137,13 +139,13 @@ int FFT2D(double** re, double** im, int nx, int ny, int dir)
         return false;
     for (i = 0; i < nx; i++) {
         for (j = 0; j < ny; j++) {
-            real[j] = re[i][j];
-            imag[j] = im[i][j];
+            real[j] = arr[i][j].real();
+            imag[j] = arr[i][j].imag();
         }
         FFT(dir, m, real, imag);
         for (j = 0; j < ny; j++) {
-            re[i][j] = real[j];
-            im[i][j] = imag[j];
+            arr[i][j].real(real[j]);
+            arr[i][j].imag(imag[j]);
         }
     }
     free(real);
@@ -154,51 +156,53 @@ int FFT2D(double** re, double** im, int nx, int ny, int dir)
 
 int main(int argc, char** argv)
 {
+    /*
     if (argc != 3)
     {
         cerr << "Usage: ./ImageFrequencyAnalysis input_file output_file\n";
         return 1;
     }
+    */
     int width = 0, height = 0, nrChannels = 0;
-    unsigned char* data = stbi_load(argv[1], &width, &height, &nrChannels, STBI_grey);
+    const char* filename_in = "C:/Users/Lucas/source/repos/ImageFrequencyAnalysis/src/vill.jpg";
+    unsigned char* data = stbi_load(filename_in, &width, &height, &nrChannels, STBI_grey);
     if (!data)
     {
         cerr << stbi_failure_reason();
         return 1;
     }
     // Initialise arrays
-    double** re;
-    double** im;
-    re = new double* [width];
-    im = new double* [width];
+    complex<double>** arr;
+    arr = new complex<double>* [width];
     for (int i = 0; i < width; i++)
     {
-        re[i] = new double[height];
-        im[i] = new double[height];
+        arr[i] = new complex<double>[height];
     }
     // Populate arrays
     for (int i = 0; i < width; i++)
     {
         for (int j = 0; j < height; j++)
         {
-            re[i][j] = data[j * width + i];
-            im[i][j] = 0;
+            arr[i][j] = { (double)data[j * width + i], 0 };
         }
     }
     // Perform Fast Fourier Transform.
-    FFT2D(re, im, width, height, 1);
+    FFT2D(arr, width, height, 1);
+    const double scale = 255/log(255);
     for (int i = 0; i < width; i++)
     {
         for (int j = 0; j < height; j++)
         {
-            double mag = sqrt(re[i][j] * re[i][j] + im[i][j] * im[i][j]);
-            int scale = 46;
+            double real = arr[i][j].real();
+            double imag = arr[i][j].imag();
+            double mag = sqrt(real*real + imag*imag);
             int translated_x = (i + width / 2) % width;
             int translated_y = (j + height / 2) % height;
             data[translated_y * width + translated_x] = scale * log(1 + mag);
         }
     }
-    int res = stbi_write_bmp(argv[2], width, height, 1, data);
+    const char* filename_out = "C:/Users/Lucas/source/repos/ImageFrequencyAnalysis/src/vill_out.jpg";
+    int res = stbi_write_bmp(filename_out, width, height, 1, data);
     stbi_image_free(data);
 	return 0;
 }
