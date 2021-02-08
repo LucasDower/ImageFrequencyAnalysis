@@ -1,0 +1,7 @@
+/libs
+/out
+/.vs
+/src/*.jpg
+CMakeSettings.json
+/src/test.cpp
+/src/CMakeLists.txt
