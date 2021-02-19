@@ -1,44 +1,25 @@
 ﻿#include <glad/glad.h>
 #include <GLFW/glfw3.h>
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
+
+
 #include "FastDCTLee.hpp"
+#include "ImageFrequencyAnalysis.h"
+#include "ImageManager.hpp"
 
 #include <iostream>
 #include <algorithm>
 
 using namespace std;
-//using namespace glm;
 
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
-void framebuffer_size_callback(GLFWwindow* window, int width, int height);
-void processInput(GLFWwindow* window);
-void cursor_position_callback(GLFWwindow* window, double xpos, double pos);
-void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
-
-void update_view();
-
-// settings
-GLsizei SCR_WIDTH = 800;
-GLsizei SCR_HEIGHT = 600;
-float fov = 45;
-
-// camera
-/*
-glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
-glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
-glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
-*/
-
-// timing
-GLfloat deltaTime = 0.0f;
-GLfloat lastFrame = 0.0f;
-
+// image handles
 unsigned int g_input_image = 0;
 unsigned int g_input_dct = 0;
 
-int image_width = 512;
-int image_height = 512;
+GLsizei SCR_WIDTH = 800;
+GLsizei SCR_HEIGHT = 600;
+
+int image_width = 0;
+int image_height = 0;
 
 unsigned char* image_buffer;
 
@@ -50,46 +31,8 @@ double centreX = 0.0f;
 double centreY = 0.0f;
 double z = 1.0;
 
-unsigned int bind_texture(unsigned char* data)
-{
-    unsigned int tex_handle = 0;
 
-    // request one texture handle
-    glGenTextures(1, &tex_handle);
 
-    // create a new texture object and bind it to tex_handle
-    glBindTexture(GL_TEXTURE_2D, tex_handle);
-
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-
-    glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, image_width, image_height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-
-    return tex_handle;
-}
-
-unsigned int load_and_bind_texture(const char* filename)
-{
-    int nrChannels = 0;
-
-    // read in the PNG image data into image_buffer
-    image_buffer = stbi_load(filename, &image_width, &image_height, &nrChannels, 0);
-    if (!image_buffer)
-    {
-        std::cerr << "Failed to read image texture\n";
-        exit(1);
-    }
-
-    std::cout << image_width << "x" << image_height << "x" << nrChannels << '\n';
-
-    return bind_texture(image_buffer);
-}
 
 void display(GLFWwindow* window)
 {
@@ -187,7 +130,7 @@ int main()
         return -1;
     }
 
-    g_input_image = load_and_bind_texture("C:/Users/Lucas/source/repos/ImageFrequencyAnalysis/resources/house.jpg");
+    g_input_image = load_and_bind_texture(&image_buffer, "C:/Users/Lucas/source/repos/ImageFrequencyAnalysis/resources/house.jpg", &image_width, &image_height);
     
     if (!is_power_of_2(image_width * image_height))
     {
@@ -225,7 +168,7 @@ int main()
         new_data[3 * i + 2] = (unsigned char)(scale_factor * log10(1 + abs(red[i])));
     }
     
-    g_input_dct = bind_texture(new_data);
+    g_input_dct = bind_texture(new_data, image_width, image_height);
 
     update_view();
     while (!glfwWindowShouldClose(window))
