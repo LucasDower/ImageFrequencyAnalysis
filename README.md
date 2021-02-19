@@ -3,5 +3,4 @@ A simple tool to transform images into the frequency domain and provide an inter
 
 :warning: **This repo is not ready.**
 
-![](resources/spatial.jpg)
-![](resources/frequency.jpg)
+![](resources/teaser.png)
