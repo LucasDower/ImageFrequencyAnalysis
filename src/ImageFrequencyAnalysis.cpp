@@ -5,6 +5,8 @@
 #include "FastDCTLee.hpp"
 #include "ImageFrequencyAnalysis.h"
 #include "ImageManager.hpp"
+#include "MathUtil.hpp"
+
 
 #include <iostream>
 #include <algorithm>
@@ -30,8 +32,6 @@ double k = 1.0;
 double centreX = 0.0f;
 double centreY = 0.0f;
 double z = 1.0;
-
-
 
 
 void display(GLFWwindow* window)
@@ -98,17 +98,11 @@ void display(GLFWwindow* window)
     glfwPollEvents();
 }
 
-constexpr bool is_power_of_2(int n)
-{
-    return (n & (n - 1)) == 0;
-}
-
 int main()
 {
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
-    //glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
     if (window == NULL)
@@ -132,40 +126,38 @@ int main()
 
     g_input_image = ImageHandler::load_and_bind_texture(&image_buffer, "C:/Users/Lucas/source/repos/ImageFrequencyAnalysis/resources/house.jpg", &image_width, &image_height);
     
-    if (!is_power_of_2(image_width * image_height))
+    if (!MathUtil::is_power_of_2(image_width * image_height))
     {
         std::cout << "Image dimensions must be a power of two" << std::endl;
         return -1;
     }
     
     // TODO: Replace with interleaved and stride
-    vector<double> red, green, blue;
+    vector<double> red;// , green, blue;
     for (int i = 0; i < image_width * image_height * 3; i += 3)
     {
         red.push_back(image_buffer[i]);
-        green.push_back(image_buffer[i+1]);
-        blue.push_back(image_buffer[i+2]);
+        //green.push_back(image_buffer[i+1]);
+        //blue.push_back(image_buffer[i+2]);
     }
 
-    FastDctLee::transform(red);
-    FastDctLee::transform(green);
-    FastDctLee::transform(blue);
+    red = MathUtil::DFT_2D(red, image_width, image_height);
 
-    double max_ = max(max(red[0], green[0]), blue[0]);
-
-    double in = log10(1 + max_);
-    double scale_factor = 255.0 / in;
-    std::cout << scale_factor << '\n';
-
-    std::cout << red[0] << " max\n";
-    std::cout << (scale_factor * log10(1 + abs(red[0]))) << " test\n";
+    double max_ = std::numeric_limits<double>::min();
+    for (int i = 0; i < image_width * image_height; i++)
+    {
+        red[i] = log(1+abs(red[i]));
+        max_ = max(max_, red[i]);
+    }
+    //printf("max_: %f\n", max_);
+    double scale_factor = 255.0 / max_;
 
     unsigned char* new_data = new unsigned char [(long long)image_width * (long long)image_height * 3LL];
     for (int i = 0; i < image_width * image_height; ++i)
     {
-        new_data[3*i] = (unsigned char) (scale_factor * log10(1 + abs(red[i])));
-        new_data[3 * i + 1] = (unsigned char)(scale_factor * log10(1 + abs(red[i])));
-        new_data[3 * i + 2] = (unsigned char)(scale_factor * log10(1 + abs(red[i])));
+        new_data[3 * i] = (unsigned char) (scale_factor * red[i]);
+        new_data[3 * i + 1] = new_data[3 * i];
+        new_data[3 * i + 2] = new_data[3 * i];
     }
     
     g_input_dct = ImageHandler::bind_texture(new_data, image_width, image_height);
@@ -245,7 +237,6 @@ void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
 
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 {
-    std::cout << button << ' ' << action << ' ' << mods << '\n';
     if (button == GLFW_MOUSE_BUTTON_1 && action == GLFW_PRESS)
     {
         recentre();
