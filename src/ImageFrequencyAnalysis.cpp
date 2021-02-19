@@ -36,33 +36,26 @@ double z = 1.0;
 
 void display(GLFWwindow* window)
 {
-    //float currentFrame = glfwGetTime();
-        //deltaTime = currentFrame - lastFrame;
-        //lastFrame = currentFrame;
-
-        //processInput(window);
-
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
 
-
     // Input image
     glEnable(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, g_input_image);
 
     glBegin(GL_QUADS);
-    glColor3f(1.0f, 1.0f, 1.0f);
-    glVertex2f(-0.3f, -0.3f);
-    glTexCoord2f(1.0f, 1.0f);
-    glVertex2f(0.3f, -0.3f);
-    glTexCoord2f(1.0f, 0.0f);
-    glVertex2f(0.3f, 0.3f);
-    glTexCoord2f(0.0f, 0.0f);
-    glVertex2f(-0.3f, 0.3f);
-    glTexCoord2f(0.0f, 1.0f);
+        glColor3f(1.0f, 1.0f, 1.0f);
+        glVertex2f(-0.3f, -0.3f);
+        glTexCoord2f(1.0f, 1.0f);
+        glVertex2f(0.3f, -0.3f);
+        glTexCoord2f(1.0f, 0.0f);
+        glVertex2f(0.3f, 0.3f);
+        glTexCoord2f(0.0f, 0.0f);
+        glVertex2f(-0.3f, 0.3f);
+        glTexCoord2f(0.0f, 1.0f);
     glEnd();
 
     //glDisable(GL_TEXTURE_2D);
@@ -70,16 +63,16 @@ void display(GLFWwindow* window)
 
     // Original DCT
     glTranslatef(0.7f, 0.0f, 0.0f);
-    glBegin(GL_QUADS);
-    glColor3f(1.0f, 1.0f, 1.0f);
-    glVertex2f(-0.3f, -0.3f);
-    glTexCoord2f(1.0f, 1.0f);
-    glVertex2f(0.3f, -0.3f);
-    glTexCoord2f(1.0f, 0.0f);
-    glVertex2f(0.3f, 0.3f);
-    glTexCoord2f(0.0f, 0.0f);
-    glVertex2f(-0.3f, 0.3f);
-    glTexCoord2f(0.0f, 1.0f);
+        glBegin(GL_QUADS);
+        glColor3f(1.0f, 1.0f, 1.0f);
+        glVertex2f(-0.3f, -0.3f);
+        glTexCoord2f(1.0f, 1.0f);
+        glVertex2f(0.3f, -0.3f);
+        glTexCoord2f(1.0f, 0.0f);
+        glVertex2f(0.3f, 0.3f);
+        glTexCoord2f(0.0f, 0.0f);
+        glVertex2f(-0.3f, 0.3f);
+        glTexCoord2f(0.0f, 1.0f);
     glEnd();
 
     glDisable(GL_TEXTURE_2D);
@@ -87,11 +80,11 @@ void display(GLFWwindow* window)
     // Modified DCT
     glTranslatef(0.7f, 0.0f, 0.0f);
     glBegin(GL_QUADS);
-    glColor3f(1.0f, 0.0f, 0.0f);
-    glVertex2f(-0.3f, -0.3f);
-    glVertex2f(0.3f, -0.3f);
-    glVertex2f(0.3f, 0.3f);
-    glVertex2f(-0.3f, 0.3f);
+        glColor3f(1.0f, 0.0f, 0.0f);
+        glVertex2f(-0.3f, -0.3f);
+        glVertex2f(0.3f, -0.3f);
+        glVertex2f(0.3f, 0.3f);
+        glVertex2f(-0.3f, 0.3f);
     glEnd();
 
     glfwSwapBuffers(window);
@@ -104,8 +97,8 @@ int main()
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 
-    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Image Frequency Analysis Tool", NULL, NULL);
-    if (window == NULL)
+    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Image Frequency Analysis Tool", nullptr, nullptr);
+    if (!window)
     {
         std::cout << "Failed to create GLFW window" << std::endl;
         glfwTerminate();
@@ -113,10 +106,10 @@ int main()
     }
 
     glfwMakeContextCurrent(window);
-    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-    glfwSetScrollCallback(window, scroll_callback);
-    glfwSetCursorPosCallback(window, cursor_position_callback);
-    glfwSetMouseButtonCallback(window, mouse_button_callback);
+    glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
+    glfwSetScrollCallback(window, scrollCallback);
+    glfwSetCursorPosCallback(window, cursorPositionCallback);
+    glfwSetMouseButtonCallback(window, mouseButtonCallback);
 
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
@@ -124,30 +117,36 @@ int main()
         return -1;
     }
 
-    g_input_image = ImageHandler::load_and_bind_texture(&image_buffer, "C:/Users/Lucas/source/repos/ImageFrequencyAnalysis/resources/house.jpg", &image_width, &image_height);
+    g_input_image = ImageHandler::loadAndBindTexture(&image_buffer, "C:/Users/Lucas/source/repos/ImageFrequencyAnalysis/resources/house.jpg", &image_width, &image_height);
     
-    if (!MathUtil::is_power_of_2(image_width * image_height))
+    if (!MathUtil::isPowerOf2(image_width * image_height))
     {
         std::cout << "Image dimensions must be a power of two" << std::endl;
         return -1;
     }
     
     // TODO: Replace with interleaved and stride
-    vector<double> red;// , green, blue;
+    vector<double> red, green, blue;
     for (int i = 0; i < image_width * image_height * 3; i += 3)
     {
         red.push_back(image_buffer[i]);
-        //green.push_back(image_buffer[i+1]);
-        //blue.push_back(image_buffer[i+2]);
+        green.push_back(image_buffer[i+1]);
+        blue.push_back(image_buffer[i+2]);
     }
 
-    red = MathUtil::DFT_2D(red, image_width, image_height);
+    red = MathUtil::dft2D(red, image_width, image_height);
+    green = MathUtil::dft2D(green, image_width, image_height);
+    blue = MathUtil::dft2D(blue, image_width, image_height);
 
     double max_ = std::numeric_limits<double>::min();
     for (int i = 0; i < image_width * image_height; i++)
     {
         red[i] = log(1+abs(red[i]));
+        green[i] = log(1 + abs(green[i]));
+        blue[i] = log(1 + abs(blue[i]));
         max_ = max(max_, red[i]);
+        max_ = max(max_, green[i]);
+        max_ = max(max_, blue[i]);
     }
     //printf("max_: %f\n", max_);
     double scale_factor = 255.0 / max_;
@@ -156,13 +155,13 @@ int main()
     for (int i = 0; i < image_width * image_height; ++i)
     {
         new_data[3 * i] = (unsigned char) (scale_factor * red[i]);
-        new_data[3 * i + 1] = new_data[3 * i];
-        new_data[3 * i + 2] = new_data[3 * i];
+        new_data[3 * i + 1] = (unsigned char)(scale_factor * green[i]);
+        new_data[3 * i + 2] = (unsigned char)(scale_factor * blue[i]);
     }
     
-    g_input_dct = ImageHandler::bind_texture(new_data, image_width, image_height);
+    g_input_dct = ImageHandler::bindTexture(new_data, image_width, image_height);
 
-    update_view();
+    updateView();
     while (!glfwWindowShouldClose(window))
     {
         display(window);
@@ -185,14 +184,14 @@ void processInput(GLFWwindow* window)
 }
 
 
-void framebuffer_size_callback(GLFWwindow* window, int width, int height)
+void framebufferSizeCallback(GLFWwindow* window, int width, int height)
 {
     SCR_WIDTH = width;
     SCR_HEIGHT = height;
     glViewport(0, 0, width, height);
 
     GLfloat aspect = (GLfloat)width / (GLfloat)height;
-    update_view();
+    updateView();
 }
 
 
@@ -202,44 +201,43 @@ void recentre()
     {
         centreX = 0;
     }
-    if (worldx < 1.0 && worldx > 0.4)
+    else if (worldx < 1.0 && worldx > 0.4)
     {
         centreX = 0.7;
     }
-    if (worldx < 1.7 && worldx > 1.1)
+    else if (worldx < 1.7 && worldx > 1.1)
     {
         centreX = 1.4;
     }
 }
 
-void update_view()
+void updateView()
 {
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     GLfloat aspect = (GLfloat)SCR_WIDTH / (GLfloat)SCR_HEIGHT;
-    //recentre();
     glOrtho(centreX - aspect * (z / 2.0), centreX + aspect * (z / 2.0), centreY - (z / 2.0), centreY + (z / 2.0), -1.0, 1.0);
 }
 
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+void scrollCallback(GLFWwindow* window, double xoffset, double yoffset)
 {
     z -= yoffset * 0.05;
-    update_view();
+    z = clamp(z, 0.1, 2.0);
+    updateView();
 }
 
-void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
+void cursorPositionCallback(GLFWwindow* window, double xpos, double ypos)
 {
     GLfloat aspect = (GLfloat)SCR_WIDTH / (GLfloat)SCR_HEIGHT;
     worldx = (xpos / SCR_WIDTH - 0.5) * aspect * z + centreX;
     worldy = (ypos / SCR_HEIGHT - 0.5) * z + centreY;
-    //std::cout << (xpos/SCR_WIDTH - 0.5) * aspect * z << ", " << (ypos/SCR_HEIGHT - 0.5) * z << '\n';
 }
 
-void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
+void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
 {
     if (button == GLFW_MOUSE_BUTTON_1 && action == GLFW_PRESS)
     {
         recentre();
-        update_view();
+        updateView();
     }
 }

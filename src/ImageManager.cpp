@@ -4,7 +4,7 @@
 #include <stdexcept>
 #include "ImageManager.hpp"
 
-unsigned int ImageHandler::bind_texture(unsigned char* data, int image_width, int image_height)
+unsigned int ImageHandler::bindTexture(unsigned char* data, int image_width, int image_height)
 {
     unsigned int tex_handle = 0;
 
@@ -28,7 +28,7 @@ unsigned int ImageHandler::bind_texture(unsigned char* data, int image_width, in
     return tex_handle;
 }
 
-unsigned int ImageHandler::load_and_bind_texture(unsigned char** image_buffer, const char* filename, int* image_width, int* image_height)
+unsigned int ImageHandler::loadAndBindTexture(unsigned char** image_buffer, const char* filename, int* image_width, int* image_height)
 {
     int nrChannels = 0;
 
@@ -40,5 +40,5 @@ unsigned int ImageHandler::load_and_bind_texture(unsigned char** image_buffer, c
         throw std::invalid_argument("Failed to read image texture");
     }
 
-    return bind_texture(*image_buffer, *image_width, *image_height);
+    return bindTexture(*image_buffer, *image_width, *image_height);
 }

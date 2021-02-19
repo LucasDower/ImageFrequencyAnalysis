@@ -5,12 +5,12 @@
 #include <stdexcept>
 
 
-bool MathUtil::is_power_of_2(int n)
+bool MathUtil::isPowerOf2(int n)
 {
 	return (n & (n - 1)) == 0;
 }
 
-std::vector<double> MathUtil::transpose_matrix(std::vector<double> data, int rows, int columns)
+std::vector<double> MathUtil::transposeMatrix(std::vector<double> data, int rows, int columns)
 {
 	std::vector<double> output;
 	for (long long i = 0; i < columns; ++i)
@@ -23,7 +23,7 @@ std::vector<double> MathUtil::transpose_matrix(std::vector<double> data, int row
 	return output;
 }
 
-std::vector<double> DFT_Rows(std::vector<double> data, int rows, int columns)
+std::vector<double> dftRows(std::vector<double> data, int rows, int columns)
 {
 	std::vector<double> output;
 	for (long long i = 0; i < rows; i++)
@@ -43,14 +43,14 @@ std::vector<double> DFT_Rows(std::vector<double> data, int rows, int columns)
 	return output;
 }
 
-std::vector<double> MathUtil::DFT_2D(std::vector<double> data, int rows, int columns)
+std::vector<double> MathUtil::dft2D(std::vector<double> data, int rows, int columns)
 {
-	if (!MathUtil::is_power_of_2(rows) || !MathUtil::is_power_of_2(columns))
+	if (!MathUtil::isPowerOf2(rows) || !MathUtil::isPowerOf2(columns))
 	{
 		throw std::invalid_argument("Dimensions must be powers of two");
 	}
-	data = DFT_Rows(data, rows, columns);
-	data = MathUtil::transpose_matrix(data, rows, columns);
-	data = DFT_Rows(data, rows, columns);
+	data = dftRows(data, rows, columns);
+	data = MathUtil::transposeMatrix(data, rows, columns);
+	data = dftRows(data, rows, columns);
 	return data;
 }
