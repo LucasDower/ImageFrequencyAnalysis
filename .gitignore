@@ -5,3 +5,4 @@
 CMakeSettings.json
 /src/test.cpp
 /src/CMakeLists.txt
+/resources
