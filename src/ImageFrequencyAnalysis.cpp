@@ -130,7 +130,7 @@ int main()
         return -1;
     }
 
-    g_input_image = load_and_bind_texture(&image_buffer, "C:/Users/Lucas/source/repos/ImageFrequencyAnalysis/resources/house.jpg", &image_width, &image_height);
+    g_input_image = ImageHandler::load_and_bind_texture(&image_buffer, "C:/Users/Lucas/source/repos/ImageFrequencyAnalysis/resources/house.jpg", &image_width, &image_height);
     
     if (!is_power_of_2(image_width * image_height))
     {
@@ -168,7 +168,7 @@ int main()
         new_data[3 * i + 2] = (unsigned char)(scale_factor * log10(1 + abs(red[i])));
     }
     
-    g_input_dct = bind_texture(new_data, image_width, image_height);
+    g_input_dct = ImageHandler::bind_texture(new_data, image_width, image_height);
 
     update_view();
     while (!glfwWindowShouldClose(window))

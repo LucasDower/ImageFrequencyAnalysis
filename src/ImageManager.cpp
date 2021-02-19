@@ -2,8 +2,9 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <../../stb_image.h>
 #include <stdexcept>
+#include "ImageManager.hpp"
 
-unsigned int bind_texture(unsigned char* data, int image_width, int image_height)
+unsigned int ImageHandler::bind_texture(unsigned char* data, int image_width, int image_height)
 {
     unsigned int tex_handle = 0;
 
@@ -27,7 +28,7 @@ unsigned int bind_texture(unsigned char* data, int image_width, int image_height
     return tex_handle;
 }
 
-unsigned int load_and_bind_texture(unsigned char** image_buffer, const char* filename, int* image_width, int* image_height)
+unsigned int ImageHandler::load_and_bind_texture(unsigned char** image_buffer, const char* filename, int* image_width, int* image_height)
 {
     int nrChannels = 0;
 
