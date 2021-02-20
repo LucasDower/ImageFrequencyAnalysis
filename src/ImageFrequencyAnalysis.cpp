@@ -18,6 +18,8 @@ enum class Panel { input_spatial, input_frequency, mask, output_frequency, outpu
 unsigned int g_input_image = 0;
 unsigned int g_input_dct = 0;
 unsigned int g_mask = 0;
+unsigned int g_output_dct = 0;
+unsigned int g_output_image = 0;
 
 GLsizei SCR_WIDTH = 800;
 GLsizei SCR_HEIGHT = 600;
@@ -29,7 +31,11 @@ int brush_size = 5;
 
 Panel focussedPanel = Panel::input_spatial;
 
-unsigned char* image_buffer;
+//unsigned char* image_buffer;
+unsigned char* mask;
+unsigned char* output_dct;
+unsigned char* output_image;
+
 
 bool isBrushDown = false;
 
@@ -41,7 +47,7 @@ double centreX = 0.0f;
 double centreY = 0.0f;
 double z = 1.0;
 
-unsigned char* mask;
+
 
 
 void display(GLFWwindow* window)
@@ -52,10 +58,10 @@ void display(GLFWwindow* window)
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
 
-    // Input image
     glEnable(GL_TEXTURE_2D);
-    glBindTexture(GL_TEXTURE_2D, g_input_image);
 
+    // Input image
+    glBindTexture(GL_TEXTURE_2D, g_input_image);
     glBegin(GL_QUADS);
         glColor3f(1.0f, 1.0f, 1.0f);
         glVertex2f(-0.3f, -0.3f);
@@ -68,10 +74,8 @@ void display(GLFWwindow* window)
         glTexCoord2f(0.0f, 1.0f);
     glEnd();
 
-    //glDisable(GL_TEXTURE_2D);
+    // Input DCT
     glBindTexture(GL_TEXTURE_2D, g_input_dct);
-
-    // Original DCT
     glTranslatef(0.7f, 0.0f, 0.0f);
     glBegin(GL_QUADS);
         glColor3f(1.0f, 1.0f, 1.0f);
@@ -85,9 +89,38 @@ void display(GLFWwindow* window)
         glTexCoord2f(0.0f, 1.0f);
     glEnd();
 
+    // Mask
     glBindTexture(GL_TEXTURE_2D, g_mask);
+    glTranslatef(0.7f, 0.0f, 0.0f);
+    glBegin(GL_QUADS);
+        glColor3f(1.0f, 1.0f, 1.0f);
+        glVertex2f(-0.3f, -0.3f);
+        glTexCoord2f(1.0f, 1.0f);
+        glVertex2f(0.3f, -0.3f);
+        glTexCoord2f(1.0f, 0.0f);
+        glVertex2f(0.3f, 0.3f);
+        glTexCoord2f(0.0f, 0.0f);
+        glVertex2f(-0.3f, 0.3f);
+        glTexCoord2f(0.0f, 1.0f);
+    glEnd();
 
-    // Modified DCT
+    // Output DCT
+    glBindTexture(GL_TEXTURE_2D, g_output_dct);
+    glTranslatef(0.7f, 0.0f, 0.0f);
+    glBegin(GL_QUADS);
+        glColor3f(1.0f, 1.0f, 1.0f);
+        glVertex2f(-0.3f, -0.3f);
+        glTexCoord2f(1.0f, 1.0f);
+        glVertex2f(0.3f, -0.3f);
+        glTexCoord2f(1.0f, 0.0f);
+        glVertex2f(0.3f, 0.3f);
+        glTexCoord2f(0.0f, 0.0f);
+        glVertex2f(-0.3f, 0.3f);
+        glTexCoord2f(0.0f, 1.0f);
+    glEnd();
+
+    // Output Image
+    glBindTexture(GL_TEXTURE_2D, g_output_image);
     glTranslatef(0.7f, 0.0f, 0.0f);
     glBegin(GL_QUADS);
         glColor3f(1.0f, 1.0f, 1.0f);
@@ -171,6 +204,7 @@ int main()
         return -1;
     }
 
+    unsigned char* image_buffer;
     g_input_image = ImageHandler::loadAndBindTexture(&image_buffer, "C:/Users/Lucas/source/repos/ImageFrequencyAnalysis/resources/house.jpg", &image_width, &image_height);
     
     if (!MathUtil::isPowerOf2(image_width * image_height))
@@ -215,11 +249,19 @@ int main()
     g_input_dct = ImageHandler::bindTexture(new_data, image_width, image_height);
 
     mask = new unsigned char[(long long)image_width * (long long)image_height * 3LL];
+    output_dct = new unsigned char[(long long)image_width * (long long)image_height * 3LL];
+    output_image = new unsigned char[(long long)image_width * (long long)image_height * 3LL];
     for (int i = 0; i < image_width * image_height * 3; ++i)
     {
         mask[i] = 255;
+        output_dct[i] = new_data[i];
+        output_image[i] = image_buffer[i];
     }
+    std::free(image_buffer);
+
     g_mask = ImageHandler::bindTexture(mask, image_width, image_height);
+    g_output_dct = ImageHandler::bindTexture(output_dct, image_width, image_height);
+    g_output_image = ImageHandler::bindTexture(output_image, image_width, image_height);
 
     updateView();
     while (!glfwWindowShouldClose(window))
@@ -227,7 +269,7 @@ int main()
         display(window);
     }
 
-    std::free(image_buffer);
+    
     delete[] new_data;
     delete[] mask;
     glfwTerminate();
@@ -271,6 +313,16 @@ void recentre()
     {
         focussedPanel = Panel::mask;
         centreX = 1.4;
+    }
+    else if (worldx < 2.4 && worldx > 1.8)
+    {
+        focussedPanel = Panel::mask;
+        centreX = 2.1;
+    }
+    else if (worldx < 3.1 && worldx > 2.5)
+    {
+        focussedPanel = Panel::mask;
+        centreX = 2.8;
     }
 }
 
