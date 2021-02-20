@@ -33,7 +33,9 @@ Panel focussedPanel = Panel::input_spatial;
 
 //unsigned char* image_buffer;
 unsigned char* mask;
+double* input_dct;
 unsigned char* output_dct;
+unsigned char* output_dct_display;
 unsigned char* output_image;
 
 
@@ -144,7 +146,7 @@ inline void setPixelColour(int x, int y)
 {
     int index = 3 * (y * image_width + x);
 
-    if (index >= image_width * image_height * 3)
+    if (index < 0 || index >= image_width * image_height * 3)
     {
         return;
     }
@@ -152,6 +154,10 @@ inline void setPixelColour(int x, int y)
     mask[index] = 0;
     mask[index + 1] = 0;
     mask[index + 2] = 0;
+
+    output_dct_display[index] = 0;
+    output_dct_display[index + 1] = 0;
+    output_dct_display[index + 2] = 0;
 }
 
 void updateMask()
@@ -176,6 +182,42 @@ void updateMask()
 
     glBindTexture(GL_TEXTURE_2D, g_mask);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, image_width, image_height, 0, GL_RGB, GL_UNSIGNED_BYTE, mask);
+
+    glBindTexture(GL_TEXTURE_2D, g_output_dct);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, image_width, image_height, 0, GL_RGB, GL_UNSIGNED_BYTE, output_dct_display);
+}
+
+void updateOutputImage()
+{
+    vector<double> red, green, blue;
+    for (int i = 0; i < image_width * image_height * 3; i += 3)
+    {
+        red.push_back(mask[i] ? input_dct[i] : 0);
+        green.push_back(mask[i+1] ? input_dct[i+1] : 0);
+        blue.push_back(mask[i+2] ? input_dct[i+2] : 0);
+    }
+
+    std::cout << "first few reds\n";
+    for (int i = 0; i < 8; i++)
+    {
+        std::cout << red[i] << std::endl;
+    }
+
+    red = MathUtil::dft2D(red, image_width, image_height, -1);
+    green = MathUtil::dft2D(green, image_width, image_height, -1);
+    blue = MathUtil::dft2D(blue, image_width, image_height, -1);
+
+    output_image = new unsigned char[(long long)image_width * (long long)image_height * 3LL];
+    std::cout << red[0] << ' ' << green[0] << ' ' << blue[0] << std::endl;
+    for (int i = 0; i < image_width * image_height; ++i)
+    {
+        output_image[3 * i] = (unsigned char) red[i];
+        output_image[3 * i + 1] = (unsigned char) green[i];
+        output_image[3 * i + 2] = (unsigned char) blue[i];
+    }
+
+    glBindTexture(GL_TEXTURE_2D, g_output_image);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, image_width, image_height, 0, GL_RGB, GL_UNSIGNED_BYTE, output_image);
 }
 
 int main()
@@ -222,13 +264,18 @@ int main()
         blue.push_back(image_buffer[i+2]);
     }
 
-    red = MathUtil::dft2D(red, image_width, image_height);
-    green = MathUtil::dft2D(green, image_width, image_height);
-    blue = MathUtil::dft2D(blue, image_width, image_height);
+    red = MathUtil::dft2D(red, image_width, image_height, 1);
+    green = MathUtil::dft2D(green, image_width, image_height, 1);
+    blue = MathUtil::dft2D(blue, image_width, image_height, 1);
 
     double max_ = std::numeric_limits<double>::min();
+    input_dct = new double[(long long)image_width * (long long)image_height * 3LL];
     for (int i = 0; i < image_width * image_height; i++)
     {
+        input_dct[3*i] = red[i];
+        input_dct[3 * i + 1] = green[i];
+        input_dct[3 * i + 2] = blue[i];
+
         red[i] = log(1+abs(red[i]));
         green[i] = log(1 + abs(green[i]));
         blue[i] = log(1 + abs(blue[i]));
@@ -238,29 +285,29 @@ int main()
     }
     double scale_factor = 255.0 / max_;
 
-    unsigned char* new_data = new unsigned char [(long long)image_width * (long long)image_height * 3LL];
+    unsigned char* input_dct_display = new unsigned char [(long long)image_width * (long long)image_height * 3LL];
     for (int i = 0; i < image_width * image_height; ++i)
     {
-        new_data[3 * i] = (unsigned char) (scale_factor * red[i]);
-        new_data[3 * i + 1] = (unsigned char)(scale_factor * green[i]);
-        new_data[3 * i + 2] = (unsigned char)(scale_factor * blue[i]);
+        input_dct_display[3 * i] = (unsigned char) (scale_factor * red[i]);
+        input_dct_display[3 * i + 1] = (unsigned char)(scale_factor * green[i]);
+        input_dct_display[3 * i + 2] = (unsigned char)(scale_factor * blue[i]);
     }
     
-    g_input_dct = ImageHandler::bindTexture(new_data, image_width, image_height);
+    g_input_dct = ImageHandler::bindTexture(input_dct_display, image_width, image_height);
 
     mask = new unsigned char[(long long)image_width * (long long)image_height * 3LL];
-    output_dct = new unsigned char[(long long)image_width * (long long)image_height * 3LL];
+    output_dct_display = new unsigned char[(long long)image_width * (long long)image_height * 3LL];
     output_image = new unsigned char[(long long)image_width * (long long)image_height * 3LL];
     for (int i = 0; i < image_width * image_height * 3; ++i)
     {
         mask[i] = 255;
-        output_dct[i] = new_data[i];
+        output_dct_display[i] = input_dct_display[i];
         output_image[i] = image_buffer[i];
     }
     std::free(image_buffer);
 
     g_mask = ImageHandler::bindTexture(mask, image_width, image_height);
-    g_output_dct = ImageHandler::bindTexture(output_dct, image_width, image_height);
+    g_output_dct = ImageHandler::bindTexture(output_dct_display, image_width, image_height);
     g_output_image = ImageHandler::bindTexture(output_image, image_width, image_height);
 
     updateView();
@@ -270,7 +317,7 @@ int main()
     }
 
     
-    delete[] new_data;
+    delete[] input_dct_display;
     delete[] mask;
     glfwTerminate();
     return 0;
@@ -316,12 +363,12 @@ void recentre()
     }
     else if (worldx < 2.4 && worldx > 1.8)
     {
-        focussedPanel = Panel::mask;
+        focussedPanel = Panel::output_frequency;
         centreX = 2.1;
     }
     else if (worldx < 3.1 && worldx > 2.5)
     {
-        focussedPanel = Panel::mask;
+        focussedPanel = Panel::output_spatial;
         centreX = 2.8;
     }
 }
@@ -362,6 +409,7 @@ void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
         recentre();
         updateView();
         isBrushDown = false;
+        updateOutputImage();
     }
 
 }
