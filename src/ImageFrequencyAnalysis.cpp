@@ -327,9 +327,12 @@ int main()
         display(window);
     }
 
-    
-    delete[] input_dct_display;
     delete[] mask;
+    delete[] input_dct;
+    delete[] input_dct_display;
+    delete[] output_dct;
+    delete[] output_dct_display;
+    delete[] output_image;
     glfwTerminate();
     return 0;
 }
