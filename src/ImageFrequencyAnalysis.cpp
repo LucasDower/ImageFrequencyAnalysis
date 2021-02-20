@@ -34,6 +34,7 @@ Panel focussedPanel = Panel::input_spatial;
 //unsigned char* image_buffer;
 unsigned char* mask;
 double* input_dct;
+unsigned char* input_dct_display;
 unsigned char* output_dct;
 unsigned char* output_dct_display;
 unsigned char* output_image;
@@ -160,6 +161,18 @@ inline void setPixelColour(int x, int y)
     output_dct_display[index + 2] = 0;
 }
 
+void updateMaskTexture()
+{
+    glBindTexture(GL_TEXTURE_2D, g_mask);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, image_width, image_height, 0, GL_RGB, GL_UNSIGNED_BYTE, mask);
+}
+
+void updateOutputDCTTexture()
+{
+    glBindTexture(GL_TEXTURE_2D, g_output_dct);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, image_width, image_height, 0, GL_RGB, GL_UNSIGNED_BYTE, output_dct_display);
+}
+
 void updateMask()
 {
     if (!isBrushDown)
@@ -180,11 +193,8 @@ void updateMask()
         }
     }
 
-    glBindTexture(GL_TEXTURE_2D, g_mask);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, image_width, image_height, 0, GL_RGB, GL_UNSIGNED_BYTE, mask);
-
-    glBindTexture(GL_TEXTURE_2D, g_output_dct);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, image_width, image_height, 0, GL_RGB, GL_UNSIGNED_BYTE, output_dct_display);
+    updateMaskTexture();
+    updateOutputDCTTexture();    
 }
 
 void updateOutputImage()
@@ -239,6 +249,7 @@ int main()
     glfwSetScrollCallback(window, scrollCallback);
     glfwSetCursorPosCallback(window, cursorPositionCallback);
     glfwSetMouseButtonCallback(window, mouseButtonCallback);
+    glfwSetKeyCallback(window, keyCallback);
 
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
@@ -285,7 +296,7 @@ int main()
     }
     double scale_factor = 255.0 / max_;
 
-    unsigned char* input_dct_display = new unsigned char [(long long)image_width * (long long)image_height * 3LL];
+    input_dct_display = new unsigned char [(long long)image_width * (long long)image_height * 3LL];
     for (int i = 0; i < image_width * image_height; ++i)
     {
         input_dct_display[3 * i] = (unsigned char) (scale_factor * red[i]);
@@ -412,4 +423,20 @@ void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
         updateOutputImage();
     }
 
+}
+
+
+void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+    if (key == GLFW_KEY_C && action == GLFW_PRESS)
+    {
+        for (int i = 0; i < image_width * image_height * 3; ++i)
+        {
+            mask[i] = 255;
+            output_dct_display[i] = input_dct_display[i];
+        }
+        updateMaskTexture();
+        updateOutputDCTTexture();
+        updateOutputImage();
+    }
 }
