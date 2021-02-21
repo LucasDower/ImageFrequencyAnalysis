@@ -39,7 +39,6 @@ unsigned char* output_dct;
 unsigned char* output_dct_display;
 unsigned char* output_image;
 
-
 bool isBrushDown = false;
 
 float worldx = 0;
@@ -161,16 +160,10 @@ inline void setPixelColour(int x, int y)
     output_dct_display[index + 2] = 0;
 }
 
-void updateMaskTexture()
+void updateTexture(unsigned int handle, unsigned char* data)
 {
-    glBindTexture(GL_TEXTURE_2D, g_mask);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, image_width, image_height, 0, GL_RGB, GL_UNSIGNED_BYTE, mask);
-}
-
-void updateOutputDCTTexture()
-{
-    glBindTexture(GL_TEXTURE_2D, g_output_dct);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, image_width, image_height, 0, GL_RGB, GL_UNSIGNED_BYTE, output_dct_display);
+    glBindTexture(GL_TEXTURE_2D, handle);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, image_width, image_height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
 }
 
 void updateMask()
@@ -193,8 +186,10 @@ void updateMask()
         }
     }
 
-    updateMaskTexture();
-    updateOutputDCTTexture();    
+    updateTexture(g_mask, mask);
+    updateTexture(g_output_dct, output_dct_display);
+    //updateMaskTexture();
+    //updateOutputDCTTexture();    
 }
 
 void updateOutputImage()
@@ -226,8 +221,9 @@ void updateOutputImage()
         output_image[3 * i + 2] = (unsigned char) blue[i];
     }
 
-    glBindTexture(GL_TEXTURE_2D, g_output_image);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, image_width, image_height, 0, GL_RGB, GL_UNSIGNED_BYTE, output_image);
+    updateTexture(g_output_image, output_image);
+    //glBindTexture(GL_TEXTURE_2D, g_output_image);
+    //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, image_width, image_height, 0, GL_RGB, GL_UNSIGNED_BYTE, output_image);
 }
 
 int main()
@@ -438,8 +434,8 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
             mask[i] = 255;
             output_dct_display[i] = input_dct_display[i];
         }
-        updateMaskTexture();
-        updateOutputDCTTexture();
+        updateTexture(g_mask, mask);
+        updateTexture(g_output_dct, output_dct_display);
         updateOutputImage();
     }
 }
