@@ -1,11 +1,10 @@
 ﻿#include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
-#include "FastDCTLee.hpp"
 #include "ImageFrequencyAnalysis.h"
-#include "ImageManager.hpp"
+#include "FastDCTLee.hpp"
 #include "MathUtil.hpp"
-#include "PanelManager.hpp"
+#include "TexturePanel.hpp"
 
 #include <iostream>
 #include <algorithm>
@@ -16,22 +15,46 @@ GLsizei SCR_HEIGHT = 600;
 float worldx = 0;
 float worldy = 0;
 
-PanelManager panelManager = PanelManager(800, 600, 0.1f);
+TexturePanel editingPanel = TexturePanel(-0.25f, 0.2f, 0.2f);
+TexturePanel previewPanel = TexturePanel(0.25f, 0.2f, 0.2f);
+
+TexturePanel inputPanel = TexturePanel(-0.25f, -0.225f, 0.1f);
+TexturePanel outputPanel = TexturePanel(0.25f, -0.225f, 0.1f);
+
+TexturePanel redDCTPanel = TexturePanel(-0.075f, -0.1f, 0.05f);
+TexturePanel redImagePanel = TexturePanel(0.075f, -0.1f, 0.05f);
+
+TexturePanel greenDCTPanel = TexturePanel(-0.075f, -0.225f, 0.05f);
+TexturePanel greenImagePanel = TexturePanel(0.075f, -0.225f, 0.05f);
+
+TexturePanel blueDCTPanel = TexturePanel(-0.075f, -0.35f, 0.05f);
+TexturePanel blueImagePanel = TexturePanel(0.075f, -0.35f, 0.05f);
+
 
 void display(GLFWwindow* window)
 {
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
+    editingPanel.DrawBoundary();
+    previewPanel.DrawBoundary();
 
-    panelManager.DrawPanel();
+    //inputPanel.DrawBoundary();
+    inputPanel.DrawPanel();
+    outputPanel.DrawBoundary();
+
+    redDCTPanel.DrawBoundary();
+    redImagePanel.DrawBoundary();
+
+    greenDCTPanel.DrawBoundary();
+    greenImagePanel.DrawBoundary();
+
+    blueDCTPanel.DrawBoundary();
+    blueImagePanel.DrawBoundary();
 
     glfwSwapBuffers(window);
     glfwPollEvents();
 }
-
 
 
 int main()
@@ -50,7 +73,6 @@ int main()
 
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
-    //glfwSetScrollCallback(window, scrollCallback);
 
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
@@ -58,9 +80,9 @@ int main()
         return -1;
     }
 
-    //panelManager = PanelManager();
+    inputPanel.SetImage("C:/Users/Lucas/source/repos/ImageFrequencyAnalysis/resources/house.jpg");
 
-    //updateView();
+    updateView();
     while (!glfwWindowShouldClose(window))
     {
         display(window);
@@ -78,19 +100,19 @@ void framebufferSizeCallback(GLFWwindow* window, int width, int height)
     glViewport(0, 0, width, height);
 
     GLfloat aspect = (GLfloat)width / (GLfloat)height;
-    //updateView();
+    updateView();
 }
 
-/*
+
 void updateView()
 {
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     GLfloat aspect = (GLfloat)SCR_WIDTH / (GLfloat)SCR_HEIGHT;
-    glOrtho(centreX - aspect * (z / 2.0), centreX + aspect * (z / 2.0), centreY - (z / 2.0), centreY + (z / 2.0), -1.0, 1.0);
+    glOrtho(0.0 - aspect * (1.0 / 2.0), 0.0 + aspect * (1.0 / 2.0), 0.0 - (1.0 / 2.0), 0.0 + (1.0 / 2.0), -1.0, 1.0);
 }
 
-
+/*
 void scrollCallback(GLFWwindow* window, double xoffset, double yoffset)
 {
     z -= yoffset * 0.05;
