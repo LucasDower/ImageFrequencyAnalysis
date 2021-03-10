@@ -43,7 +43,8 @@ void display(GLFWwindow* window)
     inputPanel.DrawPanel();
     outputPanel.DrawBoundary();
 
-    redDCTPanel.DrawBoundary();
+    //redDCTPanel.DrawBoundary();
+    redDCTPanel.DrawPanel();
     redImagePanel.DrawBoundary();
 
     greenDCTPanel.DrawBoundary();
@@ -81,7 +82,7 @@ int main()
     }
 
     inputPanel.SetImage("C:/Users/Lucas/source/repos/ImageFrequencyAnalysis/resources/house.jpg");
-
+    
     updateView();
     while (!glfwWindowShouldClose(window))
     {

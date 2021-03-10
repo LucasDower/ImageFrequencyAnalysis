@@ -3,6 +3,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <../../stb_image.h>
 #include <iostream>
+#include <stdexcept>
 
 
 TexturePanel::~TexturePanel()
@@ -15,7 +16,7 @@ void TexturePanel::SetData(unsigned char* _data, int _width, int _height, int _c
 	data = _data;
 	width = _width;
 	height = _height;
-	channels = _channels;
+	numChannels = _channels;
 
     BindTexture();
 }
@@ -23,8 +24,8 @@ void TexturePanel::SetData(unsigned char* _data, int _width, int _height, int _c
 
 void TexturePanel::SetImage(const char* filename)
 {
-    data = stbi_load(filename, &width, &height, &channels, 0);
-    isDataSet = data != nullptr; 
+    data = stbi_load(filename, &width, &height, &numChannels, 0);
+    isDataSet = data != nullptr;
 
     BindTexture();
 }
@@ -47,6 +48,37 @@ void TexturePanel::BindTexture()
 
     isDataSet = true;
 }
+
+
+std::vector<float>& TexturePanel::GetChannel(int channel)
+{
+    return CollectChannel(channel);
+}
+
+
+std::vector<float>& TexturePanel::GetChannel()
+{
+    if (numChannels != 1)
+        throw std::invalid_argument("Ambiguous channel. Use GetChannel(RGBChannel channel) for non-greyscale images.");
+    return CollectChannel(0);
+}
+
+
+std::vector<float>& TexturePanel::CollectChannel(int channelOffset)
+{
+    if (channelOffset >= numChannels)
+        throw std::range_error("Channel out of range.");
+
+    std::vector<float> channel;
+    for (int i = channelOffset; i < width * height * numChannels; i += numChannels)
+    {
+        channel.push_back((float) data[i]);
+    }
+    return channel;
+}
+
+
+
 
 
 void TexturePanel::DrawPanel()
