@@ -1,23 +1,24 @@
 #include "AppContext.hpp"
 
+#include <stdexcept>
+
 void app_context::load_input_image()
 {
-	input_image_ = std::make_unique<image_handler>(&filename_buffer_[0]);
-	input_image_loaded_ = true;
-}
-
-void app_context::show_input_image() const
-{
-	if (!input_image_loaded_)
+	try
 	{
+		input_image_ = std::make_unique<image_handler>(&filename_buffer_[0]);
+	}
+	catch (std::invalid_argument& ex)
+	{
+		input_image_error_ = std::string(ex.what());
+		input_image_state_ = image_state::failed;
 		return;
 	}
-	printf("- show input image\n");
+	
+	input_image_state_ = image_state::loaded;
+}
 
-	/*
-	ImGui::SetNextWindowSize(ImVec2(400, 400));
-	ImGui::Begin("Image", nullptr);
-	app_context->show_input_image();
-	ImGui::End();
-	*/
+std::string app_context::get_input_image_error() const
+{
+	return input_image_error_;
 }

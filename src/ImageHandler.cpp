@@ -23,12 +23,11 @@ image_handler::image_handler(std::unique_ptr<unsigned char> data, const int widt
 image_handler::image_handler(const std::string& filename)
 {
     std::unique_ptr<unsigned char> stbi_data(stbi_load(filename.c_str(), &width_, &height_, &num_channels_, 0));
+    if (!stbi_data)
+    {
+        throw std::invalid_argument("Bad image");
+    }
     data_ = std::move(stbi_data);
-	if (!data_)
-	{
-        throw std::exception("Bad image");
-	}
-
     bind_texture();
 }
 

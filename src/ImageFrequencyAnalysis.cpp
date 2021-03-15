@@ -3,6 +3,7 @@
 #include "imgui/imgui_impl_opengl3.h"
 #include <cstdio>
 #include <cstdlib>
+#include <stdexcept>
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -33,17 +34,22 @@ void display(GLFWwindow* window, std::unique_ptr<app_context> const &gui_context
     auto& filename_buffer = gui_context->get_filename_buffer();
     ImGui::InputText("Filename", &filename_buffer[0], filename_buffer.size(), 0, nullptr, nullptr);
     if (ImGui::Button("Load"))
+    {
         gui_context->load_input_image();
+    }
+    if (gui_context->get_input_image_state() == image_state::failed)
+    {
+        std::string error_message = gui_context->get_input_image_error();
+        ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), error_message.c_str());
+    }
     ImGui::End();
-
 	
-    if (gui_context->input_image_loaded())
+    if (gui_context->get_input_image_state() == image_state::loaded)
     {
         ImGui::SetNextWindowSizeConstraints(ImVec2(0, 0), ImVec2(1000, 1000), square_resize_callback);
         ImGui::Begin("Input Image Preview", nullptr);
         const auto window_size = ImGui::GetWindowSize();
         const auto image_size = std::min(window_size.x, window_size.y);
-        //ImGui::GetWindowSize(ImVec2(image_size, image_size));
         const auto& input_image = gui_context->get_input_image();
         ImGui::Image((void*)(intptr_t)input_image->get_handle(), ImVec2(image_size, image_size));
         ImGui::End();
@@ -62,6 +68,7 @@ void display(GLFWwindow* window, std::unique_ptr<app_context> const &gui_context
 
 int main(int, char**)
 {
+	// GLFW
     glfwSetErrorCallback(glfw_error_callback);
     if (!glfwInit())
         return -1;
@@ -79,7 +86,7 @@ int main(int, char**)
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1); // Enable v-sync
 
-	// OpenGL loader
+	// GLAD
     if (!gladLoadGL())
     {
         fprintf(stderr, "Failed to initialize OpenGL loader!\n");

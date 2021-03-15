@@ -3,6 +3,7 @@
 
 #include <memory>
 #include <string>
+#include <stdexcept>
 
 class image_handler
 {
