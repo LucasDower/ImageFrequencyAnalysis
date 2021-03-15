@@ -1,123 +1,108 @@
-﻿#include <glad/glad.h>
+﻿#include "imgui/imgui.h"
+#include "imgui/imgui_impl_glfw.h"
+#include "imgui/imgui_impl_opengl3.h"
+#include <cstdio>
+#include <cstdlib>
+
+#include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
-#include "ImageFrequencyAnalysis.h"
-#include "FastDCTLee.hpp"
-#include "MathUtil.hpp"
-#include "TexturePanel.hpp"
+#include "AppContext.hpp"
 
-#include <iostream>
-#include <algorithm>
-
-GLsizei SCR_WIDTH = 800;
-GLsizei SCR_HEIGHT = 600;
-
-float worldx = 0;
-float worldy = 0;
-
-TexturePanel editingPanel = TexturePanel(-0.25f, 0.2f, 0.2f);
-TexturePanel previewPanel = TexturePanel(0.25f, 0.2f, 0.2f);
-
-TexturePanel inputPanel = TexturePanel(-0.25f, -0.225f, 0.1f);
-TexturePanel outputPanel = TexturePanel(0.25f, -0.225f, 0.1f);
-
-TexturePanel redDCTPanel = TexturePanel(-0.075f, -0.1f, 0.05f);
-TexturePanel redImagePanel = TexturePanel(0.075f, -0.1f, 0.05f);
-
-TexturePanel greenDCTPanel = TexturePanel(-0.075f, -0.225f, 0.05f);
-TexturePanel greenImagePanel = TexturePanel(0.075f, -0.225f, 0.05f);
-
-TexturePanel blueDCTPanel = TexturePanel(-0.075f, -0.35f, 0.05f);
-TexturePanel blueImagePanel = TexturePanel(0.075f, -0.35f, 0.05f);
-
-
-void display(GLFWwindow* window)
+static void glfw_error_callback(int error, const char* description)
 {
-    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
-
-    editingPanel.DrawBoundary();
-    previewPanel.DrawBoundary();
-
-    //inputPanel.DrawBoundary();
-    inputPanel.DrawPanel();
-    outputPanel.DrawBoundary();
-
-    //redDCTPanel.DrawBoundary();
-    redDCTPanel.DrawPanel();
-    redImagePanel.DrawBoundary();
-
-    greenDCTPanel.DrawBoundary();
-    greenImagePanel.DrawBoundary();
-
-    blueDCTPanel.DrawBoundary();
-    blueImagePanel.DrawBoundary();
-
-    glfwSwapBuffers(window);
-    glfwPollEvents();
+    fprintf(stderr, "[GLFW]: %d: %s\n", error, description);
 }
 
 
-int main()
+void display(GLFWwindow* window, std::unique_ptr<app_context>& gui_context)
 {
-    glfwInit();
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+	
+    ImGui::Begin("Input Image", nullptr);
+    auto filename_buffer = gui_context->get_filename_buffer();
+    ImGui::InputText("Filename", &filename_buffer[0], filename_buffer.size(), 0, nullptr, nullptr);
+    if (ImGui::Button("Load"))
+        gui_context->load_input_image();
+    ImGui::End();
 
-    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Image Frequency Analysis Tool", nullptr, nullptr);
-    if (!window)
+	
+    if (gui_context->input_image_loaded())
     {
-        std::cout << "Failed to create GLFW window" << std::endl;
-        glfwTerminate();
-        return -1;
+        ImGui::Begin("Input Image", nullptr);
+        const auto input_image = gui_context->get_input_image();
+        ImGui::Image((void*)(intptr_t)input_image->get_handle(), ImVec2(input_image->get_width(), input_image->get_height()));
+        ImGui::End();
     }
-
-    glfwMakeContextCurrent(window);
-    glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
-
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
-    {
-        std::cout << "Failed to initialize GLAD" << std::endl;
-        return -1;
-    }
-
-    inputPanel.SetImage("C:/Users/Lucas/source/repos/ImageFrequencyAnalysis/resources/house.jpg");
     
-    updateView();
+
+    ImGui::Render();
+    int display_w, display_h;
+    glfwGetFramebufferSize(window, &display_w, &display_h);
+    glViewport(0, 0, display_w, display_h);
+    glClearColor(0.7f, 0.141592f, 0.3f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+}
+
+
+int main(int, char**)
+{
+    glfwSetErrorCallback(glfw_error_callback);
+    if (!glfwInit())
+        return -1;
+
+    const auto *const glsl_version = "#version 130";
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+
+    auto *window = glfwCreateWindow(1280, 720, "Image Frequency Tool", nullptr, nullptr);
+    if (!window)
+        return -1;
+	
+    glfwMakeContextCurrent(window);
+    glfwSwapInterval(1); // Enable v-sync
+
+	// OpenGL loader
+    if (!gladLoadGL())
+    {
+        fprintf(stderr, "Failed to initialize OpenGL loader!\n");
+        return -1;
+    }
+
+    // Imgui
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+
+    ImGui::StyleColorsDark();
+
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplOpenGL3_Init(glsl_version);
+
+    std::unique_ptr<app_context> gui_context(new app_context);
+	
+    // Main loop
     while (!glfwWindowShouldClose(window))
     {
-        display(window);
-    }
+        glfwPollEvents();
 
+        display(window, std::move(gui_context));
+
+        glfwSwapBuffers(window);
+    }
+	
+    // Cleanup
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+
+    glfwDestroyWindow(window);
     glfwTerminate();
+
     return 0;
 }
-
-
-void framebufferSizeCallback(GLFWwindow* window, int width, int height)
-{
-    SCR_WIDTH = width;
-    SCR_HEIGHT = height;
-    glViewport(0, 0, width, height);
-
-    GLfloat aspect = (GLfloat)width / (GLfloat)height;
-    updateView();
-}
-
-
-void updateView()
-{
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    GLfloat aspect = (GLfloat)SCR_WIDTH / (GLfloat)SCR_HEIGHT;
-    glOrtho(0.0 - aspect * (1.0 / 2.0), 0.0 + aspect * (1.0 / 2.0), 0.0 - (1.0 / 2.0), 0.0 + (1.0 / 2.0), -1.0, 1.0);
-}
-
-/*
-void scrollCallback(GLFWwindow* window, double xoffset, double yoffset)
-{
-    z -= yoffset * 0.05;
-    z = clamp(z, 0.1, 2.0);
-    updateView();
-}
-*/
