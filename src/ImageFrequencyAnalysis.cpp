@@ -15,6 +15,14 @@ static void glfw_error_callback(int error, const char* description)
 }
 
 
+void square_resize_callback(ImGuiSizeCallbackData* data)
+{
+    const auto current_size = data->DesiredSize;
+    const auto new_size = std::max(current_size.x, current_size.y);
+    data->DesiredSize = ImVec2(new_size, new_size);
+}
+
+
 void display(GLFWwindow* window, std::unique_ptr<app_context> const &gui_context)
 {
     ImGui_ImplOpenGL3_NewFrame();
@@ -31,9 +39,13 @@ void display(GLFWwindow* window, std::unique_ptr<app_context> const &gui_context
 	
     if (gui_context->input_image_loaded())
     {
-        ImGui::Begin("Input Image", nullptr);
+        ImGui::SetNextWindowSizeConstraints(ImVec2(0, 0), ImVec2(1000, 1000), square_resize_callback);
+        ImGui::Begin("Input Image Preview", nullptr);
+        const auto window_size = ImGui::GetWindowSize();
+        const auto image_size = std::min(window_size.x, window_size.y);
+        //ImGui::GetWindowSize(ImVec2(image_size, image_size));
         const auto& input_image = gui_context->get_input_image();
-        ImGui::Image((void*)(intptr_t)input_image->get_handle(), ImVec2(input_image->get_width(), input_image->get_height()));
+        ImGui::Image((void*)(intptr_t)input_image->get_handle(), ImVec2(image_size, image_size));
         ImGui::End();
     }
     
