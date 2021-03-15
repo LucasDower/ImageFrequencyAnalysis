@@ -15,14 +15,14 @@ static void glfw_error_callback(int error, const char* description)
 }
 
 
-void display(GLFWwindow* window, std::unique_ptr<app_context>& gui_context)
+void display(GLFWwindow* window, std::unique_ptr<app_context> const &gui_context)
 {
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 	
     ImGui::Begin("Input Image", nullptr);
-    auto filename_buffer = gui_context->get_filename_buffer();
+    auto& filename_buffer = gui_context->get_filename_buffer();
     ImGui::InputText("Filename", &filename_buffer[0], filename_buffer.size(), 0, nullptr, nullptr);
     if (ImGui::Button("Load"))
         gui_context->load_input_image();
@@ -32,7 +32,7 @@ void display(GLFWwindow* window, std::unique_ptr<app_context>& gui_context)
     if (gui_context->input_image_loaded())
     {
         ImGui::Begin("Input Image", nullptr);
-        const auto input_image = gui_context->get_input_image();
+        const auto& input_image = gui_context->get_input_image();
         ImGui::Image((void*)(intptr_t)input_image->get_handle(), ImVec2(input_image->get_width(), input_image->get_height()));
         ImGui::End();
     }
@@ -84,14 +84,14 @@ int main(int, char**)
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init(glsl_version);
 
-    std::unique_ptr<app_context> gui_context(new app_context);
+    const std::unique_ptr<app_context> gui_context(new app_context());
 	
     // Main loop
     while (!glfwWindowShouldClose(window))
     {
         glfwPollEvents();
 
-        display(window, std::move(gui_context));
+        display(window, gui_context);
 
         glfwSwapBuffers(window);
     }

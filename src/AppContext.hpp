@@ -18,9 +18,9 @@ public:
 	void show_input_image() const;
 	[[nodiscard]] bool input_image_loaded() const { return input_image_loaded_; }
 	std::vector<char>& get_filename_buffer() { return filename_buffer_; }
-	std::unique_ptr<image_handler> get_input_image() { return std::move(input_image_); }
+	std::shared_ptr<image_handler> get_input_image() const { return input_image_; }
 private:
-	std::unique_ptr<image_handler> input_image_{ nullptr };
+	std::shared_ptr<image_handler> input_image_{ nullptr };
 	std::vector<char> filename_buffer_;
 	bool input_image_loaded_{ false };
 };
