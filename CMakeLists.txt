@@ -6,7 +6,7 @@ set(LIBS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs")
 set(SRCS "${SRC_DIR}/ImageFrequencyAnalysis.cpp")
 
 
-add_executable(${PROJECT_NAME} ${SRCS} "src/ImageHandler.cpp" "src/imgui/imgui.cpp" "src/imgui/imgui_demo.cpp" "src/imgui/imgui_draw.cpp" "src/imgui/imgui_impl_glfw.cpp" "src/imgui/imgui_impl_opengl3.cpp" "src/imgui/imgui_tables.cpp" "src/imgui/imgui_widgets.cpp" "src/AppContext.hpp" "src/AppContext.cpp"   )
+add_executable(${PROJECT_NAME} ${SRCS} "src/ImageHandler.cpp" "src/imgui/imgui.cpp" "src/imgui/imgui_demo.cpp" "src/imgui/imgui_draw.cpp" "src/imgui/imgui_impl_glfw.cpp" "src/imgui/imgui_impl_opengl3.cpp" "src/imgui/imgui_tables.cpp" "src/imgui/imgui_widgets.cpp" "src/AppContext.hpp" "src/AppContext.cpp" "src/MathUtil.cpp" "src/MathUtil.hpp" "src/FastDCTLee.hpp" "src/FastDCTLee.cpp" )
 target_include_directories(${PROJECT_NAME} PRIVATE "${SRC_DIR}")
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 17)
 

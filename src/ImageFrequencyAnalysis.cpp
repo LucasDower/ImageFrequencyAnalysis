@@ -24,12 +24,8 @@ void square_resize_callback(ImGuiSizeCallbackData* data)
 }
 
 
-void display(GLFWwindow* window, std::unique_ptr<app_context> const &gui_context)
+void setup_windows(GLFWwindow* window, std::unique_ptr<app_context> const& gui_context)
 {
-    ImGui_ImplOpenGL3_NewFrame();
-    ImGui_ImplGlfw_NewFrame();
-    ImGui::NewFrame();
-	
     ImGui::Begin("Input Image", nullptr);
     auto& filename_buffer = gui_context->get_filename_buffer();
     ImGui::InputText("Filename", &filename_buffer[0], filename_buffer.size(), 0, nullptr, nullptr);
@@ -39,28 +35,56 @@ void display(GLFWwindow* window, std::unique_ptr<app_context> const &gui_context
     }
     if (gui_context->get_input_image_state() == image_state::failed)
     {
-        std::string error_message = gui_context->get_input_image_error();
+        const std::string error_message = gui_context->get_input_image_error();
         ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), error_message.c_str());
     }
-    ImGui::End();
-	
-    if (gui_context->get_input_image_state() == image_state::loaded)
+    if (ImGui::Button("Perform DCT"))
     {
-        ImGui::SetNextWindowSizeConstraints(ImVec2(0, 0), ImVec2(1000, 1000), square_resize_callback);
-        ImGui::Begin("Input Image Preview", nullptr);
-        const auto window_size = ImGui::GetWindowSize();
-        const auto image_size = std::min(window_size.x, window_size.y);
-        const auto& input_image = gui_context->get_input_image();
-        ImGui::Image((void*)(intptr_t)input_image->get_handle(), ImVec2(image_size, image_size));
-        ImGui::End();
+        gui_context->perform_input_dct();
     }
-    
+    ImGui::End();
+
+	// Show input image preview
+    if (gui_context->get_input_image_state() != image_state::loaded)
+    {
+        return;
+    }
+    ImGui::SetNextWindowSizeConstraints(ImVec2(200, 200), ImVec2(500, 500), square_resize_callback);
+    ImGui::Begin("Input Image Preview", nullptr);
+    auto window_size = ImGui::GetWindowSize();
+    auto image_size = std::min(window_size.x, window_size.y);
+    const auto& input_image = gui_context->get_input_image();
+    ImGui::Image((void*)(intptr_t)input_image->get_handle(), ImVec2(image_size, image_size));
+    ImGui::End();
+
+	// Show input image DCT preview
+    if (gui_context->get_input_image_dct_state() != image_state::loaded)
+    {
+        return;
+    }
+    ImGui::SetNextWindowSizeConstraints(ImVec2(200, 200), ImVec2(500, 500), square_resize_callback);
+    ImGui::Begin("Input Image DCT Preview", nullptr);
+    window_size = ImGui::GetWindowSize();
+    image_size = std::min(window_size.x, window_size.y);
+    const auto input_image_dct = gui_context->get_input_dct_image();
+    ImGui::Image((void*)(intptr_t)input_image_dct->get_handle(), ImVec2(image_size, image_size));
+    ImGui::End();
+}
+
+
+void display(GLFWwindow* window, std::unique_ptr<app_context> const &gui_context)
+{
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+	
+    setup_windows(window, gui_context);
 
     ImGui::Render();
     int display_w, display_h;
     glfwGetFramebufferSize(window, &display_w, &display_h);
     glViewport(0, 0, display_w, display_h);
-    glClearColor(0.7f, 0.141592f, 0.3f, 1.0f);
+    glClearColor(0.090f, 0.165f, 0.267f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
