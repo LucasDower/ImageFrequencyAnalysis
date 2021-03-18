@@ -27,7 +27,8 @@ private:
 	void update_texture() const;
 	void collect_channel(const int channel_offset, unsigned char*& output) const;
 	void collect_channel(const int channel_offset, double*& output) const;
-	void collect_rgb_channels(std::unique_ptr<double>& red, std::unique_ptr<double>& green, std::unique_ptr<double>& blue) const;
+	void apply_rgb_dct();
+	void apply_bw_dct();
 	std::unique_ptr<unsigned char[]> data_{ nullptr };
 	int width_{ 0 };
 	int height_{ 0 };

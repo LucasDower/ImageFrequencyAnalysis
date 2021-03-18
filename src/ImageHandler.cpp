@@ -58,7 +58,7 @@ void image_handler::bind_texture()
     GLint rgb_swizzle_mask[] = { GL_RED, GL_GREEN, GL_BLUE, GL_ONE };
     GLint bw_swizzle_mask[] = { GL_RED, GL_RED, GL_RED, GL_ONE };
 	
-    glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, (num_channels_ == 1) ? rgb_swizzle_mask : bw_swizzle_mask);
+    glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, (num_channels_ == 1) ? bw_swizzle_mask : rgb_swizzle_mask);
 	
     glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 
@@ -154,28 +154,50 @@ void image_handler::collect_channel(const int channel_offset, double*& output) c
     }
 }
 
-
-void image_handler::collect_rgb_channels(std::unique_ptr<double>& red, std::unique_ptr<double>& green,
-    std::unique_ptr<double>& blue) const
+void image_handler::apply_dct()
 {
-    if (num_channels_ != 3)
-        throw std::invalid_argument("Cannot collect RGB channels for images without 3 channels");
-
-    const auto size = static_cast<long long>(width_) * static_cast<long long>(height_);
-    red = std::make_unique<double>(size);
-    green = std::make_unique<double>(size);
-    blue = std::make_unique<double>(size);
-	
-    for (auto i = 0; i < size; ++i)
-    {
-        red.get()[i] = static_cast<double>(data_.get()[num_channels_ * i]);
-        green.get()[i] = static_cast<double>(data_.get()[num_channels_ * i + 1]);
-        blue.get()[i] = static_cast<double>(data_.get()[num_channels_ * i + 2]);
-    }
+	if (num_channels_ == 1)
+	{
+        apply_bw_dct();
+        return;
+	}
+    apply_rgb_dct();
 }
 
 
-void image_handler::apply_dct()
+void image_handler::apply_bw_dct()
+{
+    // TODO: Replace with smart pointers
+    double* depth{ nullptr };
+
+    collect_channel(0, depth);
+
+    math_util::dct_2d(depth, width_, height_, true);
+
+    auto max = std::numeric_limits<double>::min();
+    for (auto i = 0; i < width_ * height_; ++i)
+    {
+        depth[i] = log(1 + abs(depth[i]));
+        max = std::max(max, depth[i]);
+    }
+
+    const auto scale_factor = 255.0 / max;
+
+    const auto size = static_cast<long long>(width_) * static_cast<long long>(height_);
+    auto new_data = std::make_unique<unsigned char[]>(size);
+    for (auto i = 0; i < size; ++i)
+    {
+        new_data[i] = static_cast<unsigned char>(depth[i] * scale_factor);
+    }
+    data_ = std::move(new_data);
+
+    delete[] depth;
+
+    update_texture();
+}
+
+
+void image_handler::apply_rgb_dct()
 {
 	// TODO: Replace with smart pointers
     double* red{ nullptr };
