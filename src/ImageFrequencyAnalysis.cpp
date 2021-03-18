@@ -29,18 +29,29 @@ void setup_windows(GLFWwindow* window, std::unique_ptr<app_context> const& gui_c
     ImGui::Begin("Input Image", nullptr);
     auto& filename_buffer = gui_context->get_filename_buffer();
     ImGui::InputText("Filename", &filename_buffer[0], filename_buffer.size(), 0, nullptr, nullptr);
+
     if (ImGui::Button("Load"))
     {
         gui_context->load_input_image();
     }
+
+    if (gui_context->get_input_image_state() == image_state::loaded && ImGui::Checkbox("Treat as greyscale", &gui_context->is_input_greyscale))
+    {
+        if (gui_context->is_input_greyscale)
+        {
+            if (!gui_context->get_input_image()->is_greyscale())
+            {
+                gui_context->get_input_image()->collapse_to_greyscale();
+            }
+        } else {
+            printf("Cannot convert greyscale image to RGB. Reload image instead\n");
+        }
+    }
+	
     if (gui_context->get_input_image_state() == image_state::failed)
     {
-        const std::string error_message = gui_context->get_input_image_error();
+        const auto error_message = gui_context->get_input_image_error();
         ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), error_message.c_str());
-    }
-    if (ImGui::Button("Perform DCT"))
-    {
-        gui_context->perform_input_dct();
     }
     ImGui::End();
 
@@ -55,6 +66,10 @@ void setup_windows(GLFWwindow* window, std::unique_ptr<app_context> const& gui_c
     auto image_size = std::min(window_size.x, window_size.y);
     const auto& input_image = gui_context->get_input_image();
     ImGui::Image((void*)(intptr_t)input_image->get_handle(), ImVec2(image_size, image_size));
+    if (ImGui::Button("Perform DCT"))
+    {
+        gui_context->perform_input_dct();
+    }
     ImGui::End();
 
 	// Show input image DCT preview

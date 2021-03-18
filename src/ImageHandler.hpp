@@ -15,6 +15,8 @@ public:
 	void get_channel(unsigned char*& output) const;
 	void get_channel(double*& output) const;
 	void apply_dct();
+	void collapse_to_greyscale();
+	[[nodiscard]] bool is_greyscale() const { return num_channels_ == 1; }
 	[[nodiscard]] std::unique_ptr<unsigned char[]> get_channels() const;
 	[[nodiscard]] int get_width() const { return width_; }
 	[[nodiscard]] int get_height() const { return height_; }

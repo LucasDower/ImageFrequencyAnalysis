@@ -27,16 +27,24 @@ image_handler::image_handler(std::unique_ptr<unsigned char[]> data, const int wi
 image_handler::image_handler(const std::string& filename)
 {
     std::unique_ptr<unsigned char[]> stbi_data(stbi_load(filename.c_str(), &width_, &height_, &num_channels_, 0));
-    if (!stbi_data)
+    if (!stbi_data || width_ <= 0 || height_ <= 0 || (num_channels_ != 3 && num_channels_ != 1))
     {
         throw std::invalid_argument("Bad image");
     }
     data_ = std::move(stbi_data);
+    printf("width: %d, height: %d, channels: %d\n", width_, height_, num_channels_);
     bind_texture();
 }
 
 void image_handler::bind_texture()
-{   
+{
+	// Delete old texture handle
+    if (handle_ != 0)
+    {
+        printf("Deleting old handle\n");
+        glDeleteTextures(1, &handle_);
+    }
+	
     glGenTextures(1, &handle_);
     glBindTexture(GL_TEXTURE_2D, handle_);
 
@@ -47,16 +55,32 @@ void image_handler::bind_texture()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
+    GLint rgb_swizzle_mask[] = { GL_RED, GL_GREEN, GL_BLUE, GL_ONE };
+    GLint bw_swizzle_mask[] = { GL_RED, GL_RED, GL_RED, GL_ONE };
+	
+    glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, (num_channels_ == 1) ? rgb_swizzle_mask : bw_swizzle_mask);
+	
     glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width_, height_, 0, GL_RGB, GL_UNSIGNED_BYTE, data_.get());
+    update_texture();
 }
 
 
 void image_handler::update_texture() const
 {
     glBindTexture(GL_TEXTURE_2D, handle_);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width_, height_, 0, GL_RGB, GL_UNSIGNED_BYTE, data_.get());
+	
+    switch (num_channels_)
+    {
+    case 3:
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width_, height_, 0, GL_RGB, GL_UNSIGNED_BYTE, data_.get());
+        break;
+    case 1:
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, width_, height_, 0, GL_RED, GL_UNSIGNED_BYTE, data_.get());
+        break;
+    default:
+        throw std::range_error("Invalid number of channels");
+    }
 }
 
 
@@ -101,19 +125,22 @@ std::unique_ptr<unsigned char[]> image_handler::get_channels() const
 }
 
 
+// TODO: Replace with smart pointers
 void image_handler::collect_channel(const int channel_offset, unsigned char*& output) const
 {
     if (channel_offset >= num_channels_)
         throw std::range_error("Channel out of range.");
 
-    output = new unsigned char[width_ * height_];
-    for (auto i = 0; i < width_ * height_; ++i)
+    const auto size = static_cast<long long>(width_) * static_cast<long long>(height_);
+    output = new unsigned char[size];
+    for (auto i = 0; i < size; ++i)
     {
         output[i] = data_.get()[i];
     }
 }
 
 
+// TODO: Replace with smart pointers
 void image_handler::collect_channel(const int channel_offset, double*& output) const
 {
     if (channel_offset >= num_channels_)
@@ -150,6 +177,7 @@ void image_handler::collect_rgb_channels(std::unique_ptr<double>& red, std::uniq
 
 void image_handler::apply_dct()
 {
+	// TODO: Replace with smart pointers
     double* red{ nullptr };
     double* green{ nullptr };
     double* blue{ nullptr };
@@ -190,4 +218,21 @@ void image_handler::apply_dct()
 	delete[] blue;
 	
     update_texture();
+}
+
+void image_handler::collapse_to_greyscale()
+{
+    printf("Collapse to greyscale\n");
+
+    const auto size = static_cast<long long>(width_) * static_cast<long long>(height_);
+    auto new_data = std::make_unique<unsigned char[]>(size);
+    for (auto i = 0; i < size; ++i)
+    {
+        new_data[i] = math_util::convert_rgb_to_bw(data_[3LL * i], data_[3LL * i + 1], data_[3LL * i + 2]);
+    }
+	
+    data_ = std::move(new_data);
+    num_channels_ = 1;
+	
+    bind_texture();
 }

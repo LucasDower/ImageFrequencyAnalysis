@@ -21,6 +21,7 @@ public:
 	std::vector<char>& get_filename_buffer() { return filename_buffer_; }
 	[[nodiscard]] std::shared_ptr<image_handler> get_input_image() const { return input_image_; }
 	[[nodiscard]] std::shared_ptr<image_handler> get_input_dct_image() const { return input_image_dct_; }
+	bool is_input_greyscale{ false };
 private:
 	std::vector<char> filename_buffer_;
 	// Input image

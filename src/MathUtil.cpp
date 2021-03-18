@@ -172,3 +172,8 @@ void math_util::dct_2d(double*& data, const unsigned int rows, const unsigned in
 	transpose_matrix(data, rows, columns);
 	dct_rows_mt(data, columns, rows, forward);
 }
+
+unsigned char math_util::convert_rgb_to_bw(const unsigned char red, const unsigned char green, const unsigned char blue)
+{
+	return static_cast<unsigned char>(static_cast<float>(red) * 0.2126f + static_cast<float>(green) * 0.7152f + static_cast<float>(blue) * 0.0722f);
+}
