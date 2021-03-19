@@ -108,6 +108,17 @@ void setup_windows(GLFWwindow* window, std::unique_ptr<app_context> const& gui_c
 }
 
 
+void draw_editing_window(std::unique_ptr<app_context> const& gui_context)
+{
+    if (gui_context->draw_editing_window)
+    {
+        GLint loc = glGetUniformLocation(gui_context->shader_program, "aspect");
+        glUniform1f(loc, gui_context->get_aspect_ratio());
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    }
+}
+
+
 void display(GLFWwindow* window, std::unique_ptr<app_context> const &gui_context)
 {
     ImGui_ImplOpenGL3_NewFrame();
@@ -125,7 +136,8 @@ void display(GLFWwindow* window, std::unique_ptr<app_context> const &gui_context
     glClearColor(0.090f, 0.165f, 0.267f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    draw_editing_window(gui_context);
+   
 
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }

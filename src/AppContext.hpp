@@ -19,6 +19,7 @@ public:
 	void load_input_image();
 	void perform_input_dct();
 	void destroy_buffers();
+	[[nodiscard]] float app_context::get_aspect_ratio() const;
 	[[nodiscard]] image_state get_input_image_state() const { return input_image_state_; }
 	[[nodiscard]] std::string get_input_image_error() const;
 	[[nodiscard]] image_state get_input_image_dct_state() const { return input_image_dct_state_; }

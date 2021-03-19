@@ -14,11 +14,11 @@ app_context::app_context()
 	glGenBuffers(1, &vbo_);
 	
 	float editor_vertices[] = {
-		//  Position      Color             Tex-coords
-			-0.5f,  0.5f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, // Top-left
-			 0.5f,  0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, // Top-right
-			 0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, // Bottom-right
-			-0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f  // Bottom-left
+		//  Position              Tex-coords
+			-0.9f,  0.9f, 0.0f, 0.0f, // Top-left
+			 0.9f,  0.9f, 1.0f, 0.0f, // Top-right
+			 0.9f, -0.9f,  1.0f, 1.0f, // Bottom-right
+			-0.9f, -0.9f, 0.0f, 1.0f  // Bottom-left
 	};
 
 	glBindBuffer(GL_ARRAY_BUFFER, vbo_);
@@ -37,15 +37,13 @@ app_context::app_context()
 	const GLchar* vertex_source = R"glsl(
     #version 150 core
     in vec2 position;
-    in vec3 color;
     in vec2 texcoord;
-    out vec3 Color;
     out vec2 Texcoord;
+	uniform float aspect;
     void main()
     {
-        Color = color;
         Texcoord = texcoord;
-        gl_Position = vec4(position, 0.0, 1.0);
+        gl_Position = vec4(position.x / aspect, position.y, 0.0, 1.0);
     }
 	)glsl";
 	GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
@@ -54,13 +52,12 @@ app_context::app_context()
 
 	const GLchar* fragment_source = R"glsl(
     #version 150 core
-    in vec3 Color;
     in vec2 Texcoord;
     out vec4 outColor;
     uniform sampler2D tex;
     void main()
     {
-        outColor = texture(tex, Texcoord) * vec4(Color, 1.0);
+        outColor = texture(tex, Texcoord) * vec4(1.0, 1.0, 1.0, 1.0);
     }
 	)glsl";
 	GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
@@ -78,15 +75,11 @@ app_context::app_context()
 	// Specify the layout of the vertex data
 	const auto pos_attrib = glGetAttribLocation(shader_program, "position");
 	glEnableVertexAttribArray(pos_attrib);
-	glVertexAttribPointer(pos_attrib, 2, GL_FLOAT, GL_FALSE, 7 * sizeof(GLfloat), 0);
-
-	const auto col_attrib = glGetAttribLocation(shader_program, "color");
-	glEnableVertexAttribArray(col_attrib);
-	glVertexAttribPointer(col_attrib, 3, GL_FLOAT, GL_FALSE, 7 * sizeof(GLfloat), (void*)(2 * sizeof(GLfloat)));
+	glVertexAttribPointer(pos_attrib, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), 0);
 
 	const auto tex_attrib = glGetAttribLocation(shader_program, "texcoord");
 	glEnableVertexAttribArray(tex_attrib);
-	glVertexAttribPointer(tex_attrib, 2, GL_FLOAT, GL_FALSE, 7 * sizeof(GLfloat), (void*)(5 * sizeof(GLfloat)));
+	glVertexAttribPointer(tex_attrib, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (void*)(2 * sizeof(GLfloat)));
 }
 
 void app_context::load_input_image()
@@ -136,4 +129,9 @@ ImVec2 app_context::get_max_window_size() const
 {
 	const auto min_size = static_cast<float>(std::min(display_width, display_height));
 	return ImVec2(min_size - 50.0f, min_size - 50.0f);
+}
+
+float app_context::get_aspect_ratio() const
+{
+	return static_cast<float>(display_width) / static_cast<float>(display_height);
 }
