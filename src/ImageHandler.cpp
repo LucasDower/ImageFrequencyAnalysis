@@ -258,3 +258,8 @@ void image_handler::collapse_to_greyscale()
 	
     bind_texture();
 }
+
+void image_handler::destroy_buffer()
+{
+    glDeleteTextures(1, &handle_);
+}

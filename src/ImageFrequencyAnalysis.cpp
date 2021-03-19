@@ -125,6 +125,8 @@ void display(GLFWwindow* window, std::unique_ptr<app_context> const &gui_context
     glClearColor(0.090f, 0.165f, 0.267f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
@@ -184,6 +186,8 @@ int main(int, char**)
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
+
+    gui_context->destroy_buffers();
 
     glfwDestroyWindow(window);
     glfwTerminate();
