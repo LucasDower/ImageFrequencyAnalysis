@@ -38,3 +38,9 @@ std::string app_context::get_input_image_error() const
 {
 	return input_image_error_;
 }
+
+ImVec2 app_context::get_max_window_size() const
+{
+	const auto min_size = static_cast<float>(std::min(display_width, display_height));
+	return ImVec2(min_size - 50.0f, min_size - 50.0f);
+}

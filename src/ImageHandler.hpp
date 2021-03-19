@@ -1,6 +1,8 @@
 #ifndef IMAGE_HANDLER_H
 #define IMAGE_HANDLER_H
 
+#pragma once
+
 #include <memory>
 #include <string>
 #include <stdexcept>

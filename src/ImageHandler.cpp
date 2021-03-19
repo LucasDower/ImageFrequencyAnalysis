@@ -146,9 +146,9 @@ void image_handler::collect_channel(const int channel_offset, double*& output) c
     if (channel_offset >= num_channels_)
         throw std::range_error("Channel out of range.");
 
-    const auto size = static_cast<long long>(width_) * static_cast<long long>(height_) * static_cast<long long>(num_channels_);
+    const auto size = static_cast<long long>(width_) * static_cast<long long>(height_);
     output = new double[size];
-    for (auto i = 0; i < width_ * height_; ++i)
+    for (auto i = 0; i < size; ++i)
     {
         output[i] = static_cast<double>(data_.get()[num_channels_ * i + channel_offset]);
     }

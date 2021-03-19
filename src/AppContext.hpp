@@ -2,6 +2,7 @@
 #define APP_CONTEXT_H
 
 #include "ImageHandler.hpp"
+#include "imgui/imgui.h"
 
 #include <memory>
 #include <vector>
@@ -22,6 +23,10 @@ public:
 	[[nodiscard]] std::shared_ptr<image_handler> get_input_image() const { return input_image_; }
 	[[nodiscard]] std::shared_ptr<image_handler> get_input_dct_image() const { return input_image_dct_; }
 	bool is_input_greyscale{ false };
+	bool draw_editing_window{ false };
+	int display_width = 1280;
+	int display_height = 720;
+	[[nodiscard]] ImVec2 get_max_window_size() const;
 private:
 	std::vector<char> filename_buffer_;
 	// Input image
