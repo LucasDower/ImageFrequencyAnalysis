@@ -15,7 +15,7 @@
 
 image_handler::image_handler(std::unique_ptr<unsigned char[]> data, const int width, const int height, const int num_channels)
 {
-	data_ = std::move(data);
+	raw_data_ = std::move(data);
 	width_ = width;
 	height_ = height;
 	num_channels_ = num_channels;
@@ -31,8 +31,23 @@ image_handler::image_handler(const std::string& filename)
     {
         throw std::invalid_argument("Bad image");
     }
-    data_ = std::move(stbi_data);
-    printf("width: %d, height: %d, channels: %d\n", width_, height_, num_channels_);
+    raw_data_ = std::move(stbi_data);
+
+    bind_texture();
+}
+
+image_handler::image_handler(const int width, const int height)
+{
+    width_ = width;
+    height_ = height;
+    num_channels_ = 1;
+    const auto size = static_cast<long long>(width) * static_cast<long long>(width);
+    raw_data_ = std::make_unique<unsigned char[]>(size);
+    for (auto i = 0; i < size; ++i)
+    {
+        raw_data_[i] = 255;
+    }
+
     bind_texture();
 }
 
@@ -73,10 +88,10 @@ void image_handler::update_texture() const
     switch (num_channels_)
     {
     case 3:
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width_, height_, 0, GL_RGB, GL_UNSIGNED_BYTE, data_.get());
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width_, height_, 0, GL_RGB, GL_UNSIGNED_BYTE, raw_data_.get());
         break;
     case 1:
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, width_, height_, 0, GL_RED, GL_UNSIGNED_BYTE, data_.get());
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, width_, height_, 0, GL_RED, GL_UNSIGNED_BYTE, raw_data_.get());
         break;
     default:
         throw std::range_error("Invalid number of channels");
@@ -119,7 +134,7 @@ std::unique_ptr<unsigned char[]> image_handler::get_channels() const
     auto output = std::make_unique<unsigned char[]>(size);
     for (auto i = 0; i < size; ++i)
     {
-        output[i] = data_.get()[i];
+        output[i] = raw_data_.get()[i];
     }
     return output;
 }
@@ -135,7 +150,7 @@ void image_handler::collect_channel(const int channel_offset, unsigned char*& ou
     output = new unsigned char[size];
     for (auto i = 0; i < size; ++i)
     {
-        output[i] = data_.get()[i];
+        output[i] = raw_data_.get()[i];
     }
 }
 
@@ -150,7 +165,7 @@ void image_handler::collect_channel(const int channel_offset, double*& output) c
     output = new double[size];
     for (auto i = 0; i < size; ++i)
     {
-        output[i] = static_cast<double>(data_.get()[num_channels_ * i + channel_offset]);
+        output[i] = static_cast<double>(raw_data_.get()[num_channels_ * i + channel_offset]);
     }
 }
 
@@ -189,7 +204,7 @@ void image_handler::apply_bw_dct()
     {
         new_data[i] = static_cast<unsigned char>(depth[i] * scale_factor);
     }
-    data_ = std::move(new_data);
+    raw_data_ = std::move(new_data);
 
     delete[] depth;
 
@@ -233,7 +248,7 @@ void image_handler::apply_rgb_dct()
         new_data[3LL * i + 1] = static_cast<unsigned char>(green[i] * scale_factor);
         new_data[3LL * i + 2] = static_cast<unsigned char>(blue[i] * scale_factor);
     }
-    data_ = std::move(new_data);
+    raw_data_ = std::move(new_data);
 
     delete[] red;
     delete[] green;
@@ -250,16 +265,33 @@ void image_handler::collapse_to_greyscale()
     auto new_data = std::make_unique<unsigned char[]>(size);
     for (auto i = 0; i < size; ++i)
     {
-        new_data[i] = math_util::convert_rgb_to_bw(data_[3LL * i], data_[3LL * i + 1], data_[3LL * i + 2]);
+        new_data[i] = math_util::convert_rgb_to_bw(raw_data_[3LL * i], raw_data_[3LL * i + 1], raw_data_[3LL * i + 2]);
     }
 	
-    data_ = std::move(new_data);
+    raw_data_ = std::move(new_data);
     num_channels_ = 1;
 	
     bind_texture();
 }
 
-void image_handler::destroy_buffer()
+
+void image_handler::destroy_buffer() const
 {
     glDeleteTextures(1, &handle_);
+}
+
+
+void image_handler::use_texture() const
+{
+    glBindTexture(GL_TEXTURE_2D, handle_);
+}
+
+void image_handler::set_pixel(const int i, const int j, const unsigned char value) const
+{
+    if (i >= 0 && i < width_ && j >= 0 && j < height_)
+    {
+        const auto index = static_cast<long long>(j) * static_cast<long long>(width_) + static_cast<long long>(i);
+        printf("(%d, %d) -> %lld\n", i, j, index);
+        raw_data_[index] = value;
+    }
 }

@@ -19,20 +19,26 @@ public:
 	void load_input_image();
 	void perform_input_dct();
 	void destroy_buffers();
-	[[nodiscard]] float app_context::get_aspect_ratio() const;
+	void handle_editor();
+	[[nodiscard]] double get_aspect_ratio() const;
 	[[nodiscard]] image_state get_input_image_state() const { return input_image_state_; }
 	[[nodiscard]] std::string get_input_image_error() const;
 	[[nodiscard]] image_state get_input_image_dct_state() const { return input_image_dct_state_; }
+	[[nodiscard]] image_state get_mask_state() const { return mask_state_; }
 	std::vector<char>& get_filename_buffer() { return filename_buffer_; }
 	[[nodiscard]] std::shared_ptr<image_handler> get_input_image() const { return input_image_; }
 	[[nodiscard]] std::shared_ptr<image_handler> get_input_dct_image() const { return input_image_dct_; }
+	[[nodiscard]] std::shared_ptr<image_handler> get_mask_image() const { return mask_; }
 	bool is_input_greyscale{ false };
 	bool draw_editing_window{ false };
 	int display_width = 1280;
 	int display_height = 720;
+	double cursor_x = 0;
+	double cursor_y = 0;
 	[[nodiscard]] ImVec2 get_max_window_size() const;
 	GLuint shader_program{ 0 };
 private:
+	void get_editor_cursor_pos(int& editor_cursor_x, int& editor_cursor_y) const;
 	std::vector<char> filename_buffer_;
 	// Input image
 	std::shared_ptr<image_handler> input_image_{ nullptr };
@@ -41,6 +47,9 @@ private:
 	// Input image DCT
 	std::shared_ptr<image_handler> input_image_dct_{ nullptr };
 	image_state input_image_dct_state_{ image_state::empty };
+	// Mask
+	std::shared_ptr<image_handler> mask_{ nullptr };
+	image_state mask_state_{ image_state::empty };
 	GLuint vao_{ 0 };
 	GLuint vbo_{ 0 };
 	GLuint ebo_{ 0 };

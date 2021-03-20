@@ -16,6 +16,7 @@ static void glfw_error_callback(int error, const char* description)
 }
 
 
+
 void square_resize_callback(ImGuiSizeCallbackData* data)
 {
     const auto current_size = data->DesiredSize;
@@ -54,6 +55,11 @@ void draw_input_window(GLFWwindow* window, std::unique_ptr<app_context> const& g
 	        const auto error_message = gui_context->get_input_image_error();
 	        ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), error_message.c_str());
 	    }
+	
+        if (ImGui::Button("Use mask texture"))
+        {
+            gui_context->get_mask_image()->use_texture();
+        }
     ImGui::End();
 }
 
@@ -74,6 +80,10 @@ void draw_input_image_window(GLFWwindow* window, std::unique_ptr<app_context> co
 	    {
 	        gui_context->perform_input_dct();
 	    }
+        if (ImGui::Button("Use texture"))
+        {
+            gui_context->get_input_image()->use_texture();
+        }
     ImGui::End();
 }
 
@@ -94,14 +104,16 @@ void draw_dct_window(GLFWwindow* window, std::unique_ptr<app_context> const& gui
 	    {
 	        gui_context->draw_editing_window = true;
 	    }
+        if (ImGui::Button("Use texture"))
+        {
+            gui_context->get_input_dct_image()->use_texture();
+        }
     ImGui::End();
 }
 
 
 void setup_windows(GLFWwindow* window, std::unique_ptr<app_context> const& gui_context)
 {
-    glfwGetWindowSize(window, &gui_context->display_width, &gui_context->display_height);
-	
     draw_input_window(window, gui_context);
     draw_input_image_window(window, gui_context);
     draw_dct_window(window, gui_context);
@@ -112,9 +124,18 @@ void draw_editing_window(std::unique_ptr<app_context> const& gui_context)
 {
     if (gui_context->draw_editing_window)
     {
-        GLint loc = glGetUniformLocation(gui_context->shader_program, "aspect");
-        glUniform1f(loc, gui_context->get_aspect_ratio());
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        const auto loc = glGetUniformLocation(gui_context->shader_program, "aspect");
+        glUniform1f(loc, static_cast<float>(gui_context->get_aspect_ratio()));
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+    }
+}
+
+
+void handle_editor_input(GLFWwindow* window, std::unique_ptr<app_context> const& gui_context)
+{
+    if (gui_context->get_mask_state() == image_state::loaded && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT))
+    {
+        gui_context->handle_editor();
     }
 }
 
@@ -129,24 +150,24 @@ void display(GLFWwindow* window, std::unique_ptr<app_context> const &gui_context
 
     ImGui::Render();
 
-
-    int display_w, display_h;
-    glfwGetFramebufferSize(window, &display_w, &display_h);
-    glViewport(0, 0, display_w, display_h);
+    glfwGetFramebufferSize(window, &gui_context->display_width, &gui_context->display_height);
+    glViewport(0, 0, gui_context->display_width, gui_context->display_height);
     glClearColor(0.090f, 0.165f, 0.267f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
+    handle_editor_input(window, gui_context);
     draw_editing_window(gui_context);
-   
 
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
+
 
 
 int main(int, char**)
 {
 	// GLFW
     glfwSetErrorCallback(glfw_error_callback);
+	
     if (!glfwInit())
         return -1;
 
@@ -189,6 +210,7 @@ int main(int, char**)
     {
         glfwPollEvents();
 
+        glfwGetCursorPos(window, &gui_context->cursor_x, &gui_context->cursor_y);
         display(window, gui_context);
     	
         glfwSwapBuffers(window);

@@ -94,6 +94,9 @@ void app_context::load_input_image()
 		input_image_state_ = image_state::failed;
 		return;
 	}
+
+	mask_ = std::make_unique<image_handler>(input_image_->get_width(), input_image_->get_height());
+	mask_state_ = image_state::loaded;
 	
 	input_image_state_ = image_state::loaded;
 }
@@ -120,9 +123,39 @@ void app_context::destroy_buffers()
 	input_image_dct_->destroy_buffer();
 }
 
+void app_context::handle_editor()
+{
+	int editor_x, editor_y;
+	get_editor_cursor_pos(editor_x, editor_y);
+	printf("%d, %d\n", editor_x, editor_y);
+	mask_->set_pixel(editor_x, editor_y, 0);
+	mask_->update_texture();
+}
+
 std::string app_context::get_input_image_error() const
 {
 	return input_image_error_;
+}
+
+void app_context::get_editor_cursor_pos(int& editor_cursor_x, int& editor_cursor_y) const
+{
+	if (input_image_dct_state_ == image_state::loaded)
+	{
+		const auto w = static_cast<double>(display_width);
+		const auto h = static_cast<double>(display_height);
+		auto x = (cursor_x - w / 2.0) / w;
+		auto y = (cursor_y - h / 2.0) / h;
+		x *= get_aspect_ratio();
+		x /= 0.9;
+		y /= 0.9;
+		const auto im_w = get_input_dct_image()->get_width();
+		const auto im_h = get_input_dct_image()->get_height();
+		editor_cursor_x = static_cast<int>((x + 0.5) * im_w);
+		editor_cursor_y = static_cast<int>((y + 0.5) * im_h);
+		return;
+	}
+	editor_cursor_x = -1;
+	editor_cursor_y = -1;
 }
 
 ImVec2 app_context::get_max_window_size() const
@@ -131,7 +164,7 @@ ImVec2 app_context::get_max_window_size() const
 	return ImVec2(min_size - 50.0f, min_size - 50.0f);
 }
 
-float app_context::get_aspect_ratio() const
+double app_context::get_aspect_ratio() const
 {
-	return static_cast<float>(display_width) / static_cast<float>(display_height);
+	return static_cast<double>(display_width) / static_cast<double>(display_height);
 }
