@@ -114,7 +114,7 @@ void draw_dct_window(GLFWwindow* window, std::unique_ptr<app_context> const& gui
 
 void setup_windows(GLFWwindow* window, std::unique_ptr<app_context> const& gui_context)
 {
-    draw_input_window(window, gui_context);
+	draw_input_window(window, gui_context);
     draw_input_image_window(window, gui_context);
     draw_dct_window(window, gui_context);
 }
@@ -133,6 +133,11 @@ void draw_editing_window(std::unique_ptr<app_context> const& gui_context)
 
 void handle_editor_input(GLFWwindow* window, std::unique_ptr<app_context> const& gui_context)
 {
+	// Ignore mouse input if the user is interacting with an ImGui window
+	if (ImGui::GetIO().WantCaptureMouse)
+	{
+        return;
+	}
     if (gui_context->get_mask_state() == image_state::loaded && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT))
     {
         gui_context->handle_editor();
@@ -140,12 +145,12 @@ void handle_editor_input(GLFWwindow* window, std::unique_ptr<app_context> const&
 }
 
 
-void display(GLFWwindow* window, std::unique_ptr<app_context> const &gui_context)
+void display(GLFWwindow* window, std::unique_ptr<app_context> const& gui_context)
 {
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
-	
+
     setup_windows(window, gui_context);
 
     ImGui::Render();
@@ -155,7 +160,7 @@ void display(GLFWwindow* window, std::unique_ptr<app_context> const &gui_context
     glClearColor(0.090f, 0.165f, 0.267f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    handle_editor_input(window, gui_context);
+	handle_editor_input(window, gui_context);
     draw_editing_window(gui_context);
 
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -204,6 +209,15 @@ int main(int, char**)
     const std::unique_ptr<app_context> gui_context(new app_context());
 
     glClearColor(0.090f, 0.165f, 0.267f, 1.0f);
+
+    {
+        std::string icon_filename("C:/Users/Lucas/source/repos/ImageFrequencyAnalysis/resources/lol.jpg");
+        const auto icon = std::make_unique<image_handler>(icon_filename);
+        const auto icon_ptr = icon->get_data().get();
+        GLFWimage icon_image{ icon->get_width(), icon->get_height(),icon_ptr };
+        glfwSetWindowIcon(window, 1, &icon_image);
+    }
+	
 	
     // Main loop
     while (!glfwWindowShouldClose(window))

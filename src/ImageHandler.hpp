@@ -28,6 +28,7 @@ public:
 	[[nodiscard]] int get_height() const { return height_; }
 	[[nodiscard]] int get_num_channels() const { return num_channels_; }
 	[[nodiscard]] unsigned int get_handle() const { return handle_; }
+	[[nodiscard]] std::shared_ptr<unsigned char []> get_data() const { return raw_data_; }
 	void update_texture() const;
 private:
 	void bind_texture();
@@ -35,7 +36,7 @@ private:
 	void collect_channel(const int channel_offset, double*& output) const;
 	void apply_rgb_dct();
 	void apply_bw_dct();
-	std::unique_ptr<unsigned char[]> raw_data_{ nullptr };
+	std::shared_ptr<unsigned char[]> raw_data_{ nullptr };
 	int width_{ 0 };
 	int height_{ 0 };
 	int num_channels_{ 1 };
