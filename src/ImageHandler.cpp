@@ -81,22 +81,7 @@ void image_handler::bind_texture()
 }
 
 
-void image_handler::update_texture() const
-{
-    glBindTexture(GL_TEXTURE_2D, handle_);
-	
-    switch (num_channels_)
-    {
-    case 3:
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width_, height_, 0, GL_RGB, GL_UNSIGNED_BYTE, raw_data_.get());
-        break;
-    case 1:
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, width_, height_, 0, GL_RED, GL_UNSIGNED_BYTE, raw_data_.get());
-        break;
-    default:
-        throw std::range_error("Invalid number of channels");
-    }
-}
+
 
 
 
@@ -177,6 +162,24 @@ void image_handler::apply_dct()
         return;
 	}
     apply_rgb_dct();
+}
+
+
+void image_handler::update_texture() const
+{
+    glBindTexture(GL_TEXTURE_2D, get_handle());
+
+    switch (get_num_channels())
+    {
+    case 3:
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, get_width(), get_height(), 0, GL_RGB, GL_UNSIGNED_BYTE, raw_data_.get());
+        break;
+    case 1:
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, get_width(), get_height(), 0, GL_RED, GL_UNSIGNED_BYTE, raw_data_.get());
+        break;
+    default:
+        throw std::range_error("Invalid number of channels");
+    }
 }
 
 
@@ -284,14 +287,4 @@ void image_handler::destroy_buffer() const
 void image_handler::use_texture() const
 {
     glBindTexture(GL_TEXTURE_2D, handle_);
-}
-
-void image_handler::set_pixel(const int i, const int j, const unsigned char value) const
-{
-    if (i >= 0 && i < width_ && j >= 0 && j < height_)
-    {
-        const auto index = static_cast<long long>(j) * static_cast<long long>(width_) + static_cast<long long>(i);
-        printf("(%d, %d) -> %lld\n", i, j, index);
-        raw_data_[index] = value;
-    }
 }

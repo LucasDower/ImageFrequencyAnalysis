@@ -43,6 +43,7 @@ void draw_input_window(GLFWwindow* window, std::unique_ptr<app_context> const& g
 	            if (!gui_context->get_input_image()->is_greyscale())
 	            {
 	                gui_context->get_input_image()->collapse_to_greyscale();
+                    gui_context->get_mask_image()->collapse_to_greyscale();
 	            }
 	        }
 	        else {
@@ -108,6 +109,7 @@ void draw_dct_window(GLFWwindow* window, std::unique_ptr<app_context> const& gui
         {
             gui_context->get_input_dct_image()->use_texture();
         }
+        ImGui::SliderFloat("Mask Overlay", &gui_context->get_mask_image()->mask_overlay, 0.0f, 1.0f);
     ImGui::End();
 }
 
@@ -209,15 +211,6 @@ int main(int, char**)
     const std::unique_ptr<app_context> gui_context(new app_context());
 
     glClearColor(0.090f, 0.165f, 0.267f, 1.0f);
-
-    {
-        std::string icon_filename("C:/Users/Lucas/source/repos/ImageFrequencyAnalysis/resources/lol.jpg");
-        const auto icon = std::make_unique<image_handler>(icon_filename);
-        const auto icon_ptr = icon->get_data().get();
-        GLFWimage icon_image{ icon->get_width(), icon->get_height(),icon_ptr };
-        glfwSetWindowIcon(window, 1, &icon_image);
-    }
-	
 	
     // Main loop
     while (!glfwWindowShouldClose(window))

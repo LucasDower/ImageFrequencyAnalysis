@@ -95,7 +95,8 @@ void app_context::load_input_image()
 		return;
 	}
 
-	mask_ = std::make_unique<image_handler>(input_image_->get_width(), input_image_->get_height());
+	// TODO: Replace with copy-constructor
+	mask_ = std::make_unique<masked_image_handler>(&filename_buffer_[0]);
 	mask_state_ = image_state::loaded;
 	
 	input_image_state_ = image_state::loaded;
@@ -127,7 +128,7 @@ void app_context::handle_editor()
 {
 	int editor_x, editor_y;
 	get_editor_cursor_pos(editor_x, editor_y);
-	printf("%d, %d\n", editor_x, editor_y);
+	//printf("%d, %d\n", editor_x, editor_y);
 	mask_->set_pixel(editor_x, editor_y, 0);
 	mask_->update_texture();
 }

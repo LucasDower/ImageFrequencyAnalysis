@@ -21,7 +21,6 @@ public:
 	void collapse_to_greyscale();
 	void destroy_buffer() const;
 	void use_texture() const;
-	void set_pixel(int i, int j, unsigned char value) const;
 	[[nodiscard]] bool is_greyscale() const { return num_channels_ == 1; }
 	[[nodiscard]] std::unique_ptr<unsigned char[]> get_channels() const;
 	[[nodiscard]] int get_width() const { return width_; }

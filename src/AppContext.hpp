@@ -2,6 +2,7 @@
 #define APP_CONTEXT_H
 
 #include "ImageHandler.hpp"
+#include "MaskedImageHandler.hpp"
 #include "imgui/imgui.h"
 #include <glad/glad.h>
 
@@ -28,7 +29,7 @@ public:
 	std::vector<char>& get_filename_buffer() { return filename_buffer_; }
 	[[nodiscard]] std::shared_ptr<image_handler> get_input_image() const { return input_image_; }
 	[[nodiscard]] std::shared_ptr<image_handler> get_input_dct_image() const { return input_image_dct_; }
-	[[nodiscard]] std::shared_ptr<image_handler> get_mask_image() const { return mask_; }
+	[[nodiscard]] std::shared_ptr<masked_image_handler> get_mask_image() const { return mask_; }
 	bool is_input_greyscale{ false };
 	bool draw_editing_window{ false };
 	int display_width = 1280;
@@ -48,7 +49,7 @@ private:
 	std::shared_ptr<image_handler> input_image_dct_{ nullptr };
 	image_state input_image_dct_state_{ image_state::empty };
 	// Mask
-	std::shared_ptr<image_handler> mask_{ nullptr };
+	std::shared_ptr<masked_image_handler> mask_{ nullptr };
 	image_state mask_state_{ image_state::empty };
 	GLuint vao_{ 0 };
 	GLuint vbo_{ 0 };
