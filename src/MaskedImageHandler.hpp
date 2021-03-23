@@ -8,11 +8,12 @@
 class masked_image_handler : public image_handler
 {
 public:
-	explicit masked_image_handler(const std::string& filename);
-	void set_pixel(int i, int j, unsigned char value) const;
+	masked_image_handler(std::unique_ptr<unsigned char[]> data, int width, int height, int num_channels);
+	//explicit masked_image_handler(const std::string& filename);
+	void set_pixel(int i, int j, unsigned char value, const unsigned char brush_size) const;
 	//void set_mask_overlay(float value01);
 	void update_texture() const;
-	float mask_overlay{ 0.1f };
+	float mask_overlay{ 0.35f };
 private:
 	void update_masked_data() const;
 	std::shared_ptr<bool[]> mask_{ nullptr };

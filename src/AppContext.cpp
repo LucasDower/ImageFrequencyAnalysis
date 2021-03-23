@@ -94,10 +94,6 @@ void app_context::load_input_image()
 		input_image_state_ = image_state::failed;
 		return;
 	}
-
-	// TODO: Replace with copy-constructor
-	mask_ = std::make_unique<masked_image_handler>(&filename_buffer_[0]);
-	mask_state_ = image_state::loaded;
 	
 	input_image_state_ = image_state::loaded;
 }
@@ -115,6 +111,11 @@ void app_context::perform_input_dct()
 
 	// TODO: Add2^n exception handling for images not of size 2^n
 	input_image_dct_->apply_dct();
+
+	// TODO: Replace with copy constructor
+	auto dct_data = input_image_dct_->get_channels();
+	mask_ = std::make_unique<masked_image_handler>(std::move(dct_data), input_image_->get_width(), input_image_->get_height(), input_image_->get_num_channels());
+	mask_state_ = image_state::loaded;
 }
 
 void app_context::destroy_buffers()
@@ -129,7 +130,7 @@ void app_context::handle_editor()
 	int editor_x, editor_y;
 	get_editor_cursor_pos(editor_x, editor_y);
 	//printf("%d, %d\n", editor_x, editor_y);
-	mask_->set_pixel(editor_x, editor_y, 0);
+	mask_->set_pixel(editor_x, editor_y, 0, 3);
 	mask_->update_texture();
 }
 

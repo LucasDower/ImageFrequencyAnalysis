@@ -36,6 +36,7 @@ void draw_input_window(GLFWwindow* window, std::unique_ptr<app_context> const& g
 	        gui_context->load_input_image();
 	    }
 
+		// TODO: Cleanup
 	    if (gui_context->get_input_image_state() == image_state::loaded && ImGui::Checkbox("Treat as greyscale", &gui_context->is_input_greyscale))
 	    {
 	        if (gui_context->is_input_greyscale)
@@ -43,7 +44,6 @@ void draw_input_window(GLFWwindow* window, std::unique_ptr<app_context> const& g
 	            if (!gui_context->get_input_image()->is_greyscale())
 	            {
 	                gui_context->get_input_image()->collapse_to_greyscale();
-                    gui_context->get_mask_image()->collapse_to_greyscale();
 	            }
 	        }
 	        else {

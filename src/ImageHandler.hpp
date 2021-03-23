@@ -10,7 +10,7 @@
 class image_handler
 {
 public:
-	image_handler(std::unique_ptr<unsigned char[]>, int width, int height, int num_channels);
+	image_handler(std::unique_ptr<unsigned char[]> data, int width, int height, int num_channels);
 	explicit image_handler(const std::string& filename);
 	explicit image_handler(const int width, const int height);
 	void get_channel(const int channel, unsigned char*& output) const;

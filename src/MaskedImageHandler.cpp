@@ -3,6 +3,7 @@
 #include "glad/glad.h"
 #include <algorithm>
 
+/*
 masked_image_handler::masked_image_handler(const std::string& filename)
 	: image_handler(filename)
 {
@@ -14,16 +15,40 @@ masked_image_handler::masked_image_handler(const std::string& filename)
 	}
 	
     masked_raw_data_ = std::make_unique<unsigned char[]>(size); // TODO: Add multi-channel support
+    update_masked_data();
+}
+*/
+
+
+masked_image_handler::masked_image_handler(std::unique_ptr<unsigned char[]> data, const int width, const int height, const int num_channels)
+    : image_handler(std::move(data), width, height, num_channels)
+{
+    const auto size = static_cast<long long>(width) * static_cast<long long>(height);
+    mask_ = std::make_unique<bool[]>(size);
+    for (auto i = 0; i < size; ++i)
+    {
+        mask_[i] = true;
+    }
+
+    masked_raw_data_ = std::make_unique<unsigned char[]>(size); // TODO: Add multi-channel support
+    update_masked_data();
 }
 
-
-void masked_image_handler::set_pixel(const int i, const int j, const unsigned char value) const
+void masked_image_handler::set_pixel(const int i, const int j, const unsigned char value, const unsigned char brush_size) const
 {
-    if (i >= 0 && i < get_width() && j >= 0 && j < get_height())
+    const auto raw_data = get_data();
+	
+    for (auto x = -brush_size; x < brush_size; ++x)
     {
-        const auto index = static_cast<long long>(j) * static_cast<long long>(get_width()) + static_cast<long long>(i);
-        printf("(%d, %d) -> %lld\n", i, j, index);
-        mask_[index] = value;
+        for (auto y = -brush_size; y < brush_size; ++y)
+        {
+            if (i + x >= 0 && i + x < get_width() && j + y >= 0 && j + y < get_height())
+            {
+                const auto index = static_cast<long long>(j+x) * static_cast<long long>(get_width()) + static_cast<long long>(i+y);
+                mask_[index] = value;
+                //masked_raw_data_[i] = mask_[i] * raw_data[i] + !mask_[i] * static_cast<unsigned char>(static_cast<float>(raw_data[i]) * mask_overlay);
+            }
+        }
     }
 }
 
