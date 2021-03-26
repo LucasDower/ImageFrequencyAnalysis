@@ -23,11 +23,12 @@ public:
 	void use_texture() const;
 	[[nodiscard]] bool is_greyscale() const { return num_channels_ == 1; }
 	[[nodiscard]] std::unique_ptr<unsigned char[]> get_channels() const;
+	[[nodiscard]] std::shared_ptr<double[]> get_linear_data() const;
 	[[nodiscard]] int get_width() const { return width_; }
 	[[nodiscard]] int get_height() const { return height_; }
 	[[nodiscard]] int get_num_channels() const { return num_channels_; }
 	[[nodiscard]] unsigned int get_handle() const { return handle_; }
-	[[nodiscard]] std::shared_ptr<unsigned char []> get_data() const { return raw_data_; }
+	[[nodiscard]] std::shared_ptr<unsigned char[]> get_data() const { return raw_data_; }
 	void update_texture() const;
 private:
 	void bind_texture();
@@ -36,6 +37,7 @@ private:
 	void apply_rgb_dct();
 	void apply_bw_dct();
 	std::shared_ptr<unsigned char[]> raw_data_{ nullptr };
+	std::shared_ptr<double[]> linear_data_{ nullptr };
 	int width_{ 0 };
 	int height_{ 0 };
 	int num_channels_{ 1 };

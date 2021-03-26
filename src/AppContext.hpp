@@ -21,15 +21,18 @@ public:
 	void perform_input_dct();
 	void destroy_buffers();
 	void handle_editor();
+	void update_inverse();
 	[[nodiscard]] double get_aspect_ratio() const;
 	[[nodiscard]] image_state get_input_image_state() const { return input_image_state_; }
 	[[nodiscard]] std::string get_input_image_error() const;
 	[[nodiscard]] image_state get_input_image_dct_state() const { return input_image_dct_state_; }
 	[[nodiscard]] image_state get_mask_state() const { return mask_state_; }
+	[[nodiscard]] image_state get_output_image_state() const { return output_state_; }
 	std::vector<char>& get_filename_buffer() { return filename_buffer_; }
 	[[nodiscard]] std::shared_ptr<image_handler> get_input_image() const { return input_image_; }
 	[[nodiscard]] std::shared_ptr<image_handler> get_input_dct_image() const { return input_image_dct_; }
 	[[nodiscard]] std::shared_ptr<masked_image_handler> get_mask_image() const { return mask_; }
+	[[nodiscard]] std::shared_ptr<image_handler> get_output_image() const { return output_image_; }
 	bool is_input_greyscale{ false };
 	bool draw_editing_window{ false };
 	int display_width = 1280;
@@ -54,6 +57,9 @@ private:
 	GLuint vao_{ 0 };
 	GLuint vbo_{ 0 };
 	GLuint ebo_{ 0 };
+	// Output
+	std::shared_ptr<image_handler> output_image_{ nullptr };
+	image_state output_state_{ image_state::empty };
 };
 
 #endif

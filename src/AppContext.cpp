@@ -114,7 +114,8 @@ void app_context::perform_input_dct()
 
 	// TODO: Replace with copy constructor
 	auto dct_data = input_image_dct_->get_channels();
-	mask_ = std::make_unique<masked_image_handler>(std::move(dct_data), input_image_->get_width(), input_image_->get_height(), input_image_->get_num_channels());
+	auto linear_data = input_image_dct_->get_linear_data();
+	mask_ = std::make_unique<masked_image_handler>(std::move(dct_data), linear_data, input_image_->get_width(), input_image_->get_height(), input_image_->get_num_channels());
 	mask_state_ = image_state::loaded;
 }
 
@@ -132,6 +133,13 @@ void app_context::handle_editor()
 	//printf("%d, %d\n", editor_x, editor_y);
 	mask_->set_pixel(editor_x, editor_y, 0, 3);
 	mask_->update_texture();
+}
+
+void app_context::update_inverse()
+{
+	auto image = mask_->get_output_image();
+	output_image_ = std::make_unique<image_handler>(std::move(image), mask_->get_width(), mask_->get_height(), mask_->get_num_channels());
+	output_state_ = image_state::loaded;
 }
 
 std::string app_context::get_input_image_error() const

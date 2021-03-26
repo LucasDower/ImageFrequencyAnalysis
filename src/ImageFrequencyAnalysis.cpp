@@ -21,7 +21,7 @@ void square_resize_callback(ImGuiSizeCallbackData* data)
 {
     const auto current_size = data->DesiredSize;
     const auto new_size = std::max(current_size.x, current_size.y);
-    data->DesiredSize = ImVec2(new_size, new_size);
+    data->DesiredSize = ImVec2(new_size - 20, new_size);
 }
 
 
@@ -47,7 +47,7 @@ void draw_input_window(GLFWwindow* window, std::unique_ptr<app_context> const& g
 	            }
 	        }
 	        else {
-	            printf("Cannot convert greyscale image to RGB. Reload image instead\n");
+	            printf("Cannot convert greyscale image to RGB. Reload image instead.\n");
 	        }
 	    }
 
@@ -56,10 +56,19 @@ void draw_input_window(GLFWwindow* window, std::unique_ptr<app_context> const& g
 	        const auto error_message = gui_context->get_input_image_error();
 	        ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), error_message.c_str());
 	    }
-	
-        if (ImGui::Button("Use mask texture"))
+
+        if (gui_context->get_input_image_state() == image_state::loaded && ImGui::Button("Perform DCT"))
         {
-            gui_context->get_mask_image()->use_texture();
+            gui_context->perform_input_dct();
+        }
+
+        if (gui_context->get_mask_state() == image_state::loaded)
+        {
+            if (ImGui::Button("Calculate inverse"))
+            {
+				gui_context->update_inverse();
+			}
+			ImGui::SliderFloat("Mask overlay", &gui_context->get_mask_image()->mask_overlay, 0.0f, 1.0f);
         }
     ImGui::End();
 }
@@ -72,20 +81,14 @@ void draw_input_image_window(GLFWwindow* window, std::unique_ptr<app_context> co
         return;
     }
     ImGui::SetNextWindowSizeConstraints(ImVec2(200, 200), gui_context->get_max_window_size(), square_resize_callback);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
     ImGui::Begin("Input Image Preview", nullptr);
 	    const auto window_size = ImGui::GetWindowSize();
-	    const auto image_size = std::min(window_size.x, window_size.y);
+	    const auto image_size = std::min(window_size.x, window_size.y - 20);
 	    const auto& input_image = gui_context->get_input_image();
 	    ImGui::Image((void*)(intptr_t)input_image->get_handle(), ImVec2(image_size, image_size));
-	    if (ImGui::Button("Perform DCT"))
-	    {
-	        gui_context->perform_input_dct();
-	    }
-        if (ImGui::Button("Use texture"))
-        {
-            gui_context->get_input_image()->use_texture();
-        }
     ImGui::End();
+    ImGui::PopStyleVar();
 }
 
 
@@ -100,16 +103,25 @@ void draw_dct_window(GLFWwindow* window, std::unique_ptr<app_context> const& gui
 	    const auto window_size = ImGui::GetWindowSize();
 	    const auto image_size = std::min(window_size.x, window_size.y);
 	    const auto input_image_dct = gui_context->get_input_dct_image();
+        gui_context->get_mask_image()->use_texture();
 	    ImGui::Image((void*)(intptr_t)input_image_dct->get_handle(), ImVec2(image_size, image_size));
-	    if (ImGui::Button("Edit mask"))
-	    {
-	        gui_context->draw_editing_window = true;
-	    }
-        if (ImGui::Button("Use texture"))
-        {
-            gui_context->get_input_dct_image()->use_texture();
-        }
-        ImGui::SliderFloat("Mask Overlay", &gui_context->get_mask_image()->mask_overlay, 0.0f, 1.0f);
+	    gui_context->draw_editing_window = true;
+    ImGui::End();
+}
+
+
+void draw_output_window(GLFWwindow* window, std::unique_ptr<app_context> const& gui_context)
+{
+    if (gui_context->get_output_image_state() != image_state::loaded)
+    {
+        return;
+    }
+    ImGui::SetNextWindowSizeConstraints(ImVec2(200, 200), gui_context->get_max_window_size(), square_resize_callback);
+    ImGui::Begin("Output Image", nullptr);
+	    const auto window_size = ImGui::GetWindowSize();
+	    const auto image_size = std::min(window_size.x, window_size.y);
+	    const auto output_image_dct = gui_context->get_output_image();
+	    ImGui::Image((void*)(intptr_t)output_image_dct->get_handle(), ImVec2(image_size, image_size));
     ImGui::End();
 }
 
@@ -119,6 +131,7 @@ void setup_windows(GLFWwindow* window, std::unique_ptr<app_context> const& gui_c
 	draw_input_window(window, gui_context);
     draw_input_image_window(window, gui_context);
     draw_dct_window(window, gui_context);
+    draw_output_window(window, gui_context);
 }
 
 

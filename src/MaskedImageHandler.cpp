@@ -2,6 +2,7 @@
 
 #include "glad/glad.h"
 #include <algorithm>
+#include "MathUtil.hpp"
 
 /*
 masked_image_handler::masked_image_handler(const std::string& filename)
@@ -20,7 +21,7 @@ masked_image_handler::masked_image_handler(const std::string& filename)
 */
 
 
-masked_image_handler::masked_image_handler(std::unique_ptr<unsigned char[]> data, const int width, const int height, const int num_channels)
+masked_image_handler::masked_image_handler(std::unique_ptr<unsigned char[]> data, const std::shared_ptr<double[]> linear_data, const int width, const int height, const int num_channels)
     : image_handler(std::move(data), width, height, num_channels)
 {
     const auto size = static_cast<long long>(width) * static_cast<long long>(height);
@@ -30,6 +31,7 @@ masked_image_handler::masked_image_handler(std::unique_ptr<unsigned char[]> data
         mask_[i] = true;
     }
 
+    linear_data_ = linear_data;
     masked_raw_data_ = std::make_unique<unsigned char[]>(size); // TODO: Add multi-channel support
     update_masked_data();
 }
@@ -77,6 +79,27 @@ void masked_image_handler::update_texture() const
     default:
         throw std::range_error("Invalid number of channels");
     }
+}
+
+std::unique_ptr<unsigned char[]> masked_image_handler::get_output_image() const
+{
+    const auto size = static_cast<long long>(get_width()) * static_cast<long long>(get_height());
+    auto *masked_linear = new double[size];
+    for (auto i = 0; i < size; ++i)
+    {
+        masked_linear[i] = mask_[i] * linear_data_[i];
+    }
+
+    math_util::dct_2d(masked_linear, get_width(), get_height(), false);
+
+    auto output = std::make_unique<unsigned char[]>(size);
+    for (auto i = 0; i < size; ++i)
+    {
+        output[i] = static_cast<unsigned char>(masked_linear[i]);
+    }
+	
+    delete[] masked_linear;
+    return output;
 }
 
 void masked_image_handler::update_masked_data() const

@@ -124,6 +124,11 @@ std::unique_ptr<unsigned char[]> image_handler::get_channels() const
     return output;
 }
 
+std::shared_ptr<double[]> image_handler::get_linear_data() const
+{
+    return linear_data_;
+}
+
 
 // TODO: Replace with smart pointers
 void image_handler::collect_channel(const int channel_offset, unsigned char*& output) const
@@ -191,12 +196,14 @@ void image_handler::apply_bw_dct()
     collect_channel(0, depth);
 
     math_util::dct_2d(depth, width_, height_, true);
+    linear_data_ = std::unique_ptr<double[]>(depth);
 
+    auto *depth2 = new double[width_ * height_];
     auto max = std::numeric_limits<double>::min();
     for (auto i = 0; i < width_ * height_; ++i)
     {
-        depth[i] = log(1 + abs(depth[i]));
-        max = std::max(max, depth[i]);
+        depth2[i] = log(1 + abs(depth[i]));
+        max = std::max(max, depth2[i]);
     }
 
     const auto scale_factor = 255.0 / max;
@@ -205,11 +212,11 @@ void image_handler::apply_bw_dct()
     auto new_data = std::make_unique<unsigned char[]>(size);
     for (auto i = 0; i < size; ++i)
     {
-        new_data[i] = static_cast<unsigned char>(depth[i] * scale_factor);
+        new_data[i] = static_cast<unsigned char>(depth2[i] * scale_factor);
     }
     raw_data_ = std::move(new_data);
 
-    delete[] depth;
+    delete[] depth2;
 
     update_texture();
 }
