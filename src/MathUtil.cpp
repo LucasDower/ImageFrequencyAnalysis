@@ -171,6 +171,7 @@ void math_util::dct_2d(double*& data, const unsigned int rows, const unsigned in
 	dct_rows_mt(data, rows, columns, forward);
 	transpose_matrix(data, rows, columns);
 	dct_rows_mt(data, columns, rows, forward);
+	transpose_matrix(data, columns, rows);
 }
 
 unsigned char math_util::convert_rgb_to_bw(const unsigned char red, const unsigned char green, const unsigned char blue)
