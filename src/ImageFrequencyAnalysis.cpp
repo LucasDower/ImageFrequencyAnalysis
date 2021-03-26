@@ -1,441 +1,250 @@
-﻿#include <glad/glad.h>
+#include "imgui/imgui.h"
+#include "imgui/imgui_impl_glfw.h"
+#include "imgui/imgui_impl_opengl3.h"
+#include <cstdio>
+#include <cstdlib>
+#include <stdexcept>
+
+#include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
-
-#include "FastDCTLee.hpp"
-#include "ImageFrequencyAnalysis.h"
-#include "ImageManager.hpp"
-#include "MathUtil.hpp"
-
-#include <iostream>
-#include <algorithm>
-
-using namespace std;
-
-enum class Panel { input_spatial, input_frequency, mask, output_frequency, output_spatial};
-
-// image handles
-unsigned int g_input_image = 0;
-unsigned int g_input_dct = 0;
-unsigned int g_mask = 0;
-unsigned int g_output_dct = 0;
-unsigned int g_output_image = 0;
-
-GLsizei SCR_WIDTH = 800;
-GLsizei SCR_HEIGHT = 600;
-
-int image_width = 0;
-int image_height = 0;
-
-int brush_size = 5;
-
-Panel focussedPanel = Panel::input_spatial;
-
-//unsigned char* image_buffer;
-unsigned char* mask;
-double* input_dct;
-unsigned char* input_dct_display;
-unsigned char* output_dct;
-unsigned char* output_dct_display;
-unsigned char* output_image;
-
-bool isBrushDown = false;
-
-float worldx = 0;
-float worldy = 0;
-
-double k = 1.0;
-double centreX = 0.0f;
-double centreY = 0.0f;
-double z = 1.0;
+#include "AppContext.hpp"
 
 
-
-
-void display(GLFWwindow* window)
+static void glfw_error_callback(int error, const char* description)
 {
-    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+    fprintf(stderr, "[GLFW]: %d: %s\n", error, description);
+}
+
+
+void square_resize_callback(ImGuiSizeCallbackData* data)
+{
+    const auto current_size = data->DesiredSize;
+    const auto new_size = std::max(current_size.x, current_size.y);
+    data->DesiredSize = ImVec2(new_size - 20, new_size);
+}
+
+
+void draw_input_window(GLFWwindow* window, std::unique_ptr<app_context> const& gui_context)
+{
+    ImGui::Begin("Input Image", nullptr);
+	    auto& filename_buffer = gui_context->get_filename_buffer();
+	    ImGui::InputText("Filename", &filename_buffer[0], filename_buffer.size(), 0, nullptr, nullptr);
+
+	    if (ImGui::Button("Load"))
+	    {
+	        gui_context->load_input_image();
+	    }
+
+		// TODO: Cleanup
+	    if (gui_context->get_input_image_state() == image_state::loaded && ImGui::Checkbox("Treat as greyscale", &gui_context->is_input_greyscale))
+	    {
+	        if (gui_context->is_input_greyscale)
+	        {
+	            if (!gui_context->get_input_image()->is_greyscale())
+	            {
+	                gui_context->get_input_image()->collapse_to_greyscale();
+	            }
+	        }
+	        else {
+	            printf("Cannot convert greyscale image to RGB. Reload image instead.\n");
+	        }
+	    }
+
+	    if (gui_context->get_input_image_state() == image_state::failed)
+	    {
+	        const auto error_message = gui_context->get_input_image_error();
+	        ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), error_message.c_str());
+	    }
+
+        if (gui_context->get_input_image_state() == image_state::loaded && ImGui::Button("Perform DCT"))
+        {
+            gui_context->perform_input_dct();
+        }
+
+        if (gui_context->get_mask_state() == image_state::loaded)
+        {
+            if (ImGui::Button("Calculate inverse"))
+            {
+				gui_context->update_inverse();
+			}
+			ImGui::SliderFloat("Mask overlay", &gui_context->get_mask_image()->mask_overlay, 0.0f, 1.0f);
+        }
+    ImGui::End();
+}
+
+
+void draw_input_image_window(GLFWwindow* window, std::unique_ptr<app_context> const& gui_context)
+{
+    if (gui_context->get_input_image_state() != image_state::loaded)
+    {
+        return;
+    }
+    ImGui::SetNextWindowSizeConstraints(ImVec2(200, 200), gui_context->get_max_window_size(), square_resize_callback);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+    ImGui::Begin("Input Image Preview", nullptr);
+	    const auto window_size = ImGui::GetWindowSize();
+	    const auto image_size = std::min(window_size.x, window_size.y - 20);
+	    const auto& input_image = gui_context->get_input_image();
+	    ImGui::Image((void*)(intptr_t)input_image->get_handle(), ImVec2(image_size, image_size));
+    ImGui::End();
+    ImGui::PopStyleVar();
+}
+
+
+void draw_dct_window(GLFWwindow* window, std::unique_ptr<app_context> const& gui_context)
+{
+    if (gui_context->get_input_image_dct_state() != image_state::loaded)
+    {
+        return;
+    }
+    ImGui::SetNextWindowSizeConstraints(ImVec2(200, 200), gui_context->get_max_window_size(), square_resize_callback);
+    ImGui::Begin("Input Image DCT Preview", nullptr);
+	    const auto window_size = ImGui::GetWindowSize();
+	    const auto image_size = std::min(window_size.x, window_size.y);
+	    const auto input_image_dct = gui_context->get_input_dct_image();
+        gui_context->get_mask_image()->use_texture();
+	    ImGui::Image((void*)(intptr_t)input_image_dct->get_handle(), ImVec2(image_size, image_size));
+	    gui_context->draw_editing_window = true;
+    ImGui::End();
+}
+
+
+void draw_output_window(GLFWwindow* window, std::unique_ptr<app_context> const& gui_context)
+{
+    if (gui_context->get_output_image_state() != image_state::loaded)
+    {
+        return;
+    }
+    ImGui::SetNextWindowSizeConstraints(ImVec2(200, 200), gui_context->get_max_window_size(), square_resize_callback);
+    ImGui::Begin("Output Image", nullptr);
+	    const auto window_size = ImGui::GetWindowSize();
+	    const auto image_size = std::min(window_size.x, window_size.y);
+	    const auto output_image_dct = gui_context->get_output_image();
+	    ImGui::Image((void*)(intptr_t)output_image_dct->get_handle(), ImVec2(image_size, image_size));
+    ImGui::End();
+}
+
+
+void setup_windows(GLFWwindow* window, std::unique_ptr<app_context> const& gui_context)
+{
+    draw_input_window(window, gui_context);
+    draw_input_image_window(window, gui_context);
+    draw_dct_window(window, gui_context);
+    draw_output_window(window, gui_context);
+}
+
+
+void draw_editing_window(std::unique_ptr<app_context> const& gui_context)
+{
+    if (gui_context->draw_editing_window)
+    {
+        const auto loc = glGetUniformLocation(gui_context->shader_program, "aspect");
+        glUniform1f(loc, static_cast<float>(gui_context->get_aspect_ratio()));
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+    }
+}
+
+
+void handle_editor_input(GLFWwindow* window, std::unique_ptr<app_context> const& gui_context)
+{
+	// Ignore mouse input if the user is interacting with an ImGui window
+	if (ImGui::GetIO().WantCaptureMouse)
+	{
+        return;
+	}
+    if (gui_context->get_mask_state() == image_state::loaded && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT))
+    {
+        gui_context->handle_editor();
+    }
+}
+
+
+void display(GLFWwindow* window, std::unique_ptr<app_context> const& gui_context)
+{
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+
+    setup_windows(window, gui_context);
+
+    ImGui::Render();
+
+    glfwGetFramebufferSize(window, &gui_context->display_width, &gui_context->display_height);
+    glViewport(0, 0, gui_context->display_width, gui_context->display_height);
+    glClearColor(0.090f, 0.165f, 0.267f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
+	  handle_editor_input(window, gui_context);
+    draw_editing_window(gui_context);
 
-    glEnable(GL_TEXTURE_2D);
-
-    // Input image
-    glBindTexture(GL_TEXTURE_2D, g_input_image);
-    glBegin(GL_QUADS);
-        glColor3f(1.0f, 1.0f, 1.0f);
-        glVertex2f(-0.3f, -0.3f);
-        glTexCoord2f(1.0f, 1.0f);
-        glVertex2f(0.3f, -0.3f);
-        glTexCoord2f(1.0f, 0.0f);
-        glVertex2f(0.3f, 0.3f);
-        glTexCoord2f(0.0f, 0.0f);
-        glVertex2f(-0.3f, 0.3f);
-        glTexCoord2f(0.0f, 1.0f);
-    glEnd();
-
-    // Input DCT
-    glBindTexture(GL_TEXTURE_2D, g_input_dct);
-    glTranslatef(0.7f, 0.0f, 0.0f);
-    glBegin(GL_QUADS);
-        glColor3f(1.0f, 1.0f, 1.0f);
-        glVertex2f(-0.3f, -0.3f);
-        glTexCoord2f(1.0f, 1.0f);
-        glVertex2f(0.3f, -0.3f);
-        glTexCoord2f(1.0f, 0.0f);
-        glVertex2f(0.3f, 0.3f);
-        glTexCoord2f(0.0f, 0.0f);
-        glVertex2f(-0.3f, 0.3f);
-        glTexCoord2f(0.0f, 1.0f);
-    glEnd();
-
-    // Mask
-    glBindTexture(GL_TEXTURE_2D, g_mask);
-    glTranslatef(0.7f, 0.0f, 0.0f);
-    glBegin(GL_QUADS);
-        glColor3f(1.0f, 1.0f, 1.0f);
-        glVertex2f(-0.3f, -0.3f);
-        glTexCoord2f(1.0f, 1.0f);
-        glVertex2f(0.3f, -0.3f);
-        glTexCoord2f(1.0f, 0.0f);
-        glVertex2f(0.3f, 0.3f);
-        glTexCoord2f(0.0f, 0.0f);
-        glVertex2f(-0.3f, 0.3f);
-        glTexCoord2f(0.0f, 1.0f);
-    glEnd();
-
-    // Output DCT
-    glBindTexture(GL_TEXTURE_2D, g_output_dct);
-    glTranslatef(0.7f, 0.0f, 0.0f);
-    glBegin(GL_QUADS);
-        glColor3f(1.0f, 1.0f, 1.0f);
-        glVertex2f(-0.3f, -0.3f);
-        glTexCoord2f(1.0f, 1.0f);
-        glVertex2f(0.3f, -0.3f);
-        glTexCoord2f(1.0f, 0.0f);
-        glVertex2f(0.3f, 0.3f);
-        glTexCoord2f(0.0f, 0.0f);
-        glVertex2f(-0.3f, 0.3f);
-        glTexCoord2f(0.0f, 1.0f);
-    glEnd();
-
-    // Output Image
-    glBindTexture(GL_TEXTURE_2D, g_output_image);
-    glTranslatef(0.7f, 0.0f, 0.0f);
-    glBegin(GL_QUADS);
-        glColor3f(1.0f, 1.0f, 1.0f);
-        glVertex2f(-0.3f, -0.3f);
-        glTexCoord2f(1.0f, 1.0f);
-        glVertex2f(0.3f, -0.3f);
-        glTexCoord2f(1.0f, 0.0f);
-        glVertex2f(0.3f, 0.3f);
-        glTexCoord2f(0.0f, 0.0f);
-        glVertex2f(-0.3f, 0.3f);
-        glTexCoord2f(0.0f, 1.0f);
-    glEnd();
-
-    glDisable(GL_TEXTURE_2D);
-
-    glfwSwapBuffers(window);
-    glfwPollEvents();
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
-inline void setPixelColour(int x, int y)
+
+
+int main(int, char**)
 {
-    int index = 3 * (y * image_width + x);
+	// GLFW
+    glfwSetErrorCallback(glfw_error_callback);
+	
+    if (!glfwInit())
+        return -1;
 
-    if (index < 0 || index >= image_width * image_height * 3)
-    {
-        return;
-    }
-
-    mask[index] = 0;
-    mask[index + 1] = 0;
-    mask[index + 2] = 0;
-
-    output_dct_display[index] = 0;
-    output_dct_display[index + 1] = 0;
-    output_dct_display[index + 2] = 0;
-}
-
-void updateTexture(unsigned int handle, unsigned char* data)
-{
-    glBindTexture(GL_TEXTURE_2D, handle);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, image_width, image_height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-}
-
-void updateMask()
-{
-    if (!isBrushDown)
-    {
-        return;
-    }
-
-    float x01 = (worldx - centreX + 0.3) / 0.6;
-    float y01 = (worldy - centreY + 0.3) / 0.6;
-    int px = image_width * x01;
-    int py = image_height * y01;
-
-    for (int i = -brush_size; i < brush_size; ++i)
-    {
-        for (int j = -brush_size; j < brush_size; ++j)
-        {
-            setPixelColour(px + i, py + j);
-        }
-    }
-
-    updateTexture(g_mask, mask);
-    updateTexture(g_output_dct, output_dct_display);
-    //updateMaskTexture();
-    //updateOutputDCTTexture();    
-}
-
-void updateOutputImage()
-{
-    vector<double> red, green, blue;
-    for (int i = 0; i < image_width * image_height * 3; i += 3)
-    {
-        red.push_back(mask[i] ? input_dct[i] : 0);
-        green.push_back(mask[i+1] ? input_dct[i+1] : 0);
-        blue.push_back(mask[i+2] ? input_dct[i+2] : 0);
-    }
-
-    std::cout << "first few reds\n";
-    for (int i = 0; i < 8; i++)
-    {
-        std::cout << red[i] << std::endl;
-    }
-
-    red = MathUtil::dft2D(red, image_width, image_height, -1);
-    green = MathUtil::dft2D(green, image_width, image_height, -1);
-    blue = MathUtil::dft2D(blue, image_width, image_height, -1);
-
-    output_image = new unsigned char[(long long)image_width * (long long)image_height * 3LL];
-    std::cout << red[0] << ' ' << green[0] << ' ' << blue[0] << std::endl;
-    for (int i = 0; i < image_width * image_height; ++i)
-    {
-        output_image[3 * i] = (unsigned char) red[i];
-        output_image[3 * i + 1] = (unsigned char) green[i];
-        output_image[3 * i + 2] = (unsigned char) blue[i];
-    }
-
-    updateTexture(g_output_image, output_image);
-    //glBindTexture(GL_TEXTURE_2D, g_output_image);
-    //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, image_width, image_height, 0, GL_RGB, GL_UNSIGNED_BYTE, output_image);
-}
-
-int main()
-{
-    glfwInit();
+    const auto *const glsl_version = "#version 130";
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 
-    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Image Frequency Analysis Tool", nullptr, nullptr);
+    auto *window = glfwCreateWindow(1280, 720, "Image Frequency Tool", nullptr, nullptr);
     if (!window)
-    {
-        std::cout << "Failed to create GLFW window" << std::endl;
-        glfwTerminate();
         return -1;
-    }
-
+	
     glfwMakeContextCurrent(window);
-    glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
-    glfwSetScrollCallback(window, scrollCallback);
-    glfwSetCursorPosCallback(window, cursorPositionCallback);
-    glfwSetMouseButtonCallback(window, mouseButtonCallback);
-    glfwSetKeyCallback(window, keyCallback);
+    glfwSwapInterval(1); // Enable v-sync
 
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
+	// GLAD
+    if (!gladLoadGL())
     {
-        std::cout << "Failed to initialize GLAD" << std::endl;
+        fprintf(stderr, "Failed to initialize OpenGL loader!\n");
         return -1;
     }
 
-    unsigned char* image_buffer;
-    g_input_image = ImageHandler::loadAndBindTexture(&image_buffer, "C:/Users/Lucas/source/repos/ImageFrequencyAnalysis/resources/house.jpg", &image_width, &image_height);
-    
-    if (!MathUtil::isPowerOf2(image_width * image_height))
-    {
-        std::cout << "Image dimensions must be a power of two" << std::endl;
-        return -1;
-    }
-    
-    // TODO: Replace with interleaved and stride
-    vector<double> red, green, blue;
-    for (int i = 0; i < image_width * image_height * 3; i += 3)
-    {
-        red.push_back(image_buffer[i]);
-        green.push_back(image_buffer[i+1]);
-        blue.push_back(image_buffer[i+2]);
-    }
+    // Imgui
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
 
-    red = MathUtil::dft2D(red, image_width, image_height, 1);
-    green = MathUtil::dft2D(green, image_width, image_height, 1);
-    blue = MathUtil::dft2D(blue, image_width, image_height, 1);
+    ImGui::StyleColorsDark();
 
-    double max_ = std::numeric_limits<double>::min();
-    input_dct = new double[(long long)image_width * (long long)image_height * 3LL];
-    for (int i = 0; i < image_width * image_height; i++)
-    {
-        input_dct[3*i] = red[i];
-        input_dct[3 * i + 1] = green[i];
-        input_dct[3 * i + 2] = blue[i];
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplOpenGL3_Init(glsl_version);
 
-        red[i] = log(1+abs(red[i]));
-        green[i] = log(1 + abs(green[i]));
-        blue[i] = log(1 + abs(blue[i]));
-        max_ = max(max_, red[i]);
-        max_ = max(max_, green[i]);
-        max_ = max(max_, blue[i]);
-    }
-    double scale_factor = 255.0 / max_;
+    const std::unique_ptr<app_context> gui_context(new app_context());
 
-    input_dct_display = new unsigned char [(long long)image_width * (long long)image_height * 3LL];
-    for (int i = 0; i < image_width * image_height; ++i)
-    {
-        input_dct_display[3 * i] = (unsigned char) (scale_factor * red[i]);
-        input_dct_display[3 * i + 1] = (unsigned char)(scale_factor * green[i]);
-        input_dct_display[3 * i + 2] = (unsigned char)(scale_factor * blue[i]);
-    }
-    
-    g_input_dct = ImageHandler::bindTexture(input_dct_display, image_width, image_height);
-
-    mask = new unsigned char[(long long)image_width * (long long)image_height * 3LL];
-    output_dct_display = new unsigned char[(long long)image_width * (long long)image_height * 3LL];
-    output_image = new unsigned char[(long long)image_width * (long long)image_height * 3LL];
-    for (int i = 0; i < image_width * image_height * 3; ++i)
-    {
-        mask[i] = 255;
-        output_dct_display[i] = input_dct_display[i];
-        output_image[i] = image_buffer[i];
-    }
-    std::free(image_buffer);
-
-    g_mask = ImageHandler::bindTexture(mask, image_width, image_height);
-    g_output_dct = ImageHandler::bindTexture(output_dct_display, image_width, image_height);
-    g_output_image = ImageHandler::bindTexture(output_image, image_width, image_height);
-
-    updateView();
+    glClearColor(0.090f, 0.165f, 0.267f, 1.0f);
+	
+    // Main loop
     while (!glfwWindowShouldClose(window))
     {
-        display(window);
-    }
+        glfwPollEvents();
 
-    delete[] mask;
-    delete[] input_dct;
-    delete[] input_dct_display;
-    delete[] output_dct;
-    delete[] output_dct_display;
-    delete[] output_image;
+        glfwGetCursorPos(window, &gui_context->cursor_x, &gui_context->cursor_y);
+        display(window, gui_context);
+    	
+        glfwSwapBuffers(window);
+    }
+	
+    // Cleanup
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+
+    gui_context->destroy_buffers();
+
+    glfwDestroyWindow(window);
     glfwTerminate();
+
     return 0;
-}
-
-
-void processInput(GLFWwindow* window)
-{
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-    {
-        glfwSetWindowShouldClose(window, true);
-    }
-}
-
-
-void framebufferSizeCallback(GLFWwindow* window, int width, int height)
-{
-    SCR_WIDTH = width;
-    SCR_HEIGHT = height;
-    glViewport(0, 0, width, height);
-
-    GLfloat aspect = (GLfloat)width / (GLfloat)height;
-    updateView();
-}
-
-
-void recentre()
-{
-    if (worldx < 0.3 && worldx > -0.3)
-    {
-        focussedPanel = Panel::input_spatial;
-        centreX = 0;
-    }
-    else if (worldx < 1.0 && worldx > 0.4)
-    {
-        focussedPanel = Panel::input_frequency;
-        centreX = 0.7;
-    }
-    else if (worldx < 1.7 && worldx > 1.1)
-    {
-        focussedPanel = Panel::mask;
-        centreX = 1.4;
-    }
-    else if (worldx < 2.4 && worldx > 1.8)
-    {
-        focussedPanel = Panel::output_frequency;
-        centreX = 2.1;
-    }
-    else if (worldx < 3.1 && worldx > 2.5)
-    {
-        focussedPanel = Panel::output_spatial;
-        centreX = 2.8;
-    }
-}
-
-void updateView()
-{
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    GLfloat aspect = (GLfloat)SCR_WIDTH / (GLfloat)SCR_HEIGHT;
-    glOrtho(centreX - aspect * (z / 2.0), centreX + aspect * (z / 2.0), centreY - (z / 2.0), centreY + (z / 2.0), -1.0, 1.0);
-}
-
-void scrollCallback(GLFWwindow* window, double xoffset, double yoffset)
-{
-    z -= yoffset * 0.05;
-    z = clamp(z, 0.1, 2.0);
-    updateView();
-}
-
-void cursorPositionCallback(GLFWwindow* window, double xpos, double ypos)
-{
-    GLfloat aspect = (GLfloat)SCR_WIDTH / (GLfloat)SCR_HEIGHT;
-    worldx = (xpos / SCR_WIDTH - 0.5) * aspect * z + centreX;
-    worldy = (ypos / SCR_HEIGHT - 0.5) * z + centreY;
-    updateMask();
-}
-
-void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
-{
-    if (button == GLFW_MOUSE_BUTTON_1 && action == GLFW_PRESS)
-    {
-        recentre();
-        updateView();
-        isBrushDown = (focussedPanel == Panel::mask);
-    }
-    if (button == GLFW_MOUSE_BUTTON_1 && action == GLFW_RELEASE)
-    {
-        recentre();
-        updateView();
-        isBrushDown = false;
-        updateOutputImage();
-    }
-
-}
-
-
-void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
-{
-    if (key == GLFW_KEY_C && action == GLFW_PRESS)
-    {
-        for (int i = 0; i < image_width * image_height * 3; ++i)
-        {
-            mask[i] = 255;
-            output_dct_display[i] = input_dct_display[i];
-        }
-        updateTexture(g_mask, mask);
-        updateTexture(g_output_dct, output_dct_display);
-        updateOutputImage();
-    }
 }

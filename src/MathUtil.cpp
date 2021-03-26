@@ -3,82 +3,178 @@
 
 #include <iostream>
 #include <stdexcept>
+#include <thread>
 
 
-bool MathUtil::isPowerOf2(int n)
+bool math_util::is_power_of_2(const unsigned int n)
 {
 	return (n & (n - 1)) == 0;
 }
 
-std::vector<double> MathUtil::transposeMatrix(std::vector<double> data, int rows, int columns)
+
+void math_util::scale_data(double* data, const unsigned int size, const double factor)
 {
-	std::vector<double> output;
-	for (long long i = 0; i < columns; ++i)
+	for (unsigned int i = 0; i < size; ++i)
 	{
-		for (long long j = 0; j < rows; j++)
-		{
-			output.push_back(data[j * columns + i]);
-		}
+		data[i] *= factor;
 	}
-	return output;
 }
 
-void MathUtil::dft1D(std::vector<double>& data, int direction)
+
+void math_util::transpose_square(double*& data, const unsigned int size)
 {
-	if (direction == 1)
+	for (unsigned int i = 0; i < size; ++i)
 	{
-		data[0] *= 1.0 / sqrt(2.0);
-		FastDctLee::transform(data);
-		for (int i = 0; i < data.size(); i++)
+		for (auto j = i + 1; j < size; ++j)
 		{
-			data[i] *= sqrt(2.0 / data.size());
+			const auto temp = data[i * size + j];
+			data[i * size + j] = data[j * size + i];
+			data[j * size + i] = temp;
 		}
-		return;
+	}
+}
+
+void math_util::transpose_non_square(double*& data, const unsigned int rows, const unsigned int columns)
+{
+	const auto num_threads = std::thread::hardware_concurrency();
+	const auto size = rows * columns;
+	const auto elements_per_thread = size / num_threads;
+
+	auto* output = new double[rows * columns];
+	auto* threads = new std::thread[num_threads];
+
+	// Dispatch threads
+	if (elements_per_thread > 0)
+	{
+		for (int i = 0; i < num_threads; ++i)
+		{
+			int lower = i * elements_per_thread;
+			int upper = lower + elements_per_thread;
+			threads[i] = std::thread([data, lower, upper, columns, rows, output]()
+				{
+					int row = 0;
+					int column = 0;
+					for (int j = lower; j < upper; ++j)
+					{
+						column = j % columns;
+						row = (j - column) / columns;
+						output[row * columns + column] = data[column * columns + row];
+					}
+				});
+		}
+	}
+
+	// Cleanup
+	for (int j = num_threads * elements_per_thread; j < size; ++j)
+	{
+		int column = j % columns;
+		int row = (j - column) / columns;
+		output[row * columns + column] = data[column * columns + row];
+	}
+
+	// Wait for threads (if any dispatched)
+	if (elements_per_thread > 0)
+	{
+		for (int i = 0; i < num_threads; ++i)
+		{
+			threads[i].join();
+		}
+	}
+
+	double* temp = data;
+	data = output;
+	delete[] temp;
+	delete[] threads;
+}
+
+void math_util::transpose_matrix(double*& data, const unsigned int rows, const unsigned int columns)
+{
+	if (rows == columns)
+	{
+		transpose_square(data, rows);
 	}
 	else
 	{
-		for (int i = 0; i < data.size(); i++)
-		{
-			data[i] *= sqrt(data.size() / 2.0);
-		}
-		FastDctLee::inverseTransform(data);
-		data[0] *= sqrt(2.0);
-		for (int i = 0; i < data.size(); i++)
-		{
-			data[i] /= (data.size() / 2.0);
-		}
-		return;
+		transpose_non_square(data, rows, columns);
 	}
-	return;
 }
 
-std::vector<double> dftRows(std::vector<double> data, int rows, int columns, int direction)
+
+void math_util::dct_1d(double* data, const unsigned int size, const bool forward)
 {
-	std::vector<double> output;
-	for (long long i = 0; i < rows; i++)
+	if (forward)
 	{
-		std::vector<double> row_values;
-		for (long long j = 0; j < columns; j++)
-		{
-			row_values.push_back(data[(columns * i) + j]);
-		}
-		MathUtil::dft1D(row_values, direction);
-		for (long long j = 0; j < columns; j++)
-		{
-			output.push_back(row_values[j]);
-		}
+		data[0] /= sqrt(2.0);
+		FastDctLee::transform(data, size);
+		scale_data(data, size, sqrt(2.0 / size));
 	}
-	return output;
+	else
+	{
+		scale_data(data, size, sqrt(size / 2.0));
+		FastDctLee::inverseTransform(data, size);
+		data[0] *= sqrt(2.0);
+	}
+	scale_data(data, size, sqrt(2.0 / size));
 }
 
-std::vector<double> MathUtil::dft2D(std::vector<double> data, int rows, int columns, int direction)
+void math_util::dct_rows_mt(double* data, const unsigned int rows, const unsigned int columns, const bool forward)
 {
-	if (!MathUtil::isPowerOf2(rows) || !MathUtil::isPowerOf2(columns))
+	const auto num_threads = std::thread::hardware_concurrency();
+	const auto rows_per_thread = rows / num_threads;
+	const auto block_size = rows_per_thread * columns;
+
+	auto* threads = new std::thread[num_threads];
+
+	// Dispatch threads
+	for (unsigned int i = 0; i < num_threads; i++)
+	{
+		threads[i] = std::thread([block_size, data, columns, forward, i, rows_per_thread]()
+			{
+				for (unsigned int j = 0; j < rows_per_thread; ++j)
+				{
+					dct_1d(&data[block_size * i + j * columns], columns, forward);
+				}
+			});
+	}
+
+	// Tidy up
+	for (auto i = rows_per_thread * num_threads; i < rows; i++)
+	{
+		dct_1d(&data[i * columns], columns, forward);
+	}
+
+	// Wait for threads
+	for (unsigned int i = 0; i < num_threads; i++)
+	{
+		threads[i].join();
+	}
+
+	delete[] threads;
+}
+
+
+void math_util::dct_rows(double* data, const unsigned int rows, const unsigned int columns, const bool forward)
+{
+	for (unsigned int i = 0; i < rows; i++)
+	{
+		dct_1d(&data[i * columns], columns, forward);
+	}
+}
+
+
+void math_util::dct_2d(double*& data, const unsigned int rows, const unsigned int columns, const bool forward)
+{
+	if (!is_power_of_2(rows) || !is_power_of_2(columns))
 	{
 		throw std::invalid_argument("Dimensions must be powers of two");
 	}
-	data = dftRows(data, rows, columns, direction);
-	data = MathUtil::transposeMatrix(data, rows, columns);
-	data = dftRows(data, rows, columns, direction);
-	return data;
+	dct_rows_mt(data, rows, columns, forward);
+	transpose_matrix(data, rows, columns);
+	dct_rows_mt(data, columns, rows, forward);
+	transpose_matrix(data, columns, rows);
+}
+
+unsigned char math_util::convert_rgb_to_bw(const unsigned char red, const unsigned char green, const unsigned char blue)
+{
+	return static_cast<unsigned char>(static_cast<float>(red) * 0.2126f + static_cast<float>(green) * 0.7152f + static_cast<float>(blue) * 0.0722f);
 }
