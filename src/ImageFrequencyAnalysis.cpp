@@ -1,4 +1,4 @@
-﻿#include "imgui/imgui.h"
+#include "imgui/imgui.h"
 #include "imgui/imgui_impl_glfw.h"
 #include "imgui/imgui_impl_opengl3.h"
 #include <cstdio>
@@ -10,11 +10,11 @@
 
 #include "AppContext.hpp"
 
+
 static void glfw_error_callback(int error, const char* description)
 {
     fprintf(stderr, "[GLFW]: %d: %s\n", error, description);
 }
-
 
 
 void square_resize_callback(ImGuiSizeCallbackData* data)
@@ -128,7 +128,7 @@ void draw_output_window(GLFWwindow* window, std::unique_ptr<app_context> const& 
 
 void setup_windows(GLFWwindow* window, std::unique_ptr<app_context> const& gui_context)
 {
-	draw_input_window(window, gui_context);
+    draw_input_window(window, gui_context);
     draw_input_image_window(window, gui_context);
     draw_dct_window(window, gui_context);
     draw_output_window(window, gui_context);
@@ -175,7 +175,7 @@ void display(GLFWwindow* window, std::unique_ptr<app_context> const& gui_context
     glClearColor(0.090f, 0.165f, 0.267f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
-	handle_editor_input(window, gui_context);
+	  handle_editor_input(window, gui_context);
     draw_editing_window(gui_context);
 
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
