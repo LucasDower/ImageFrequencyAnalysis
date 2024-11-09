@@ -3,8 +3,8 @@
 
 #include "ImageHandler.hpp"
 #include "MaskedImageHandler.hpp"
-#include "imgui/imgui.h"
-#include <glad/glad.h>
+#include <imgui.h>
+#include "glad/gl.h"
 
 #include <memory>
 #include <vector>

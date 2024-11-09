@@ -1,6 +1,6 @@
 #include "MaskedImageHandler.hpp"
 
-#include "glad/glad.h"
+#include "glad/gl.h"
 #include <algorithm>
 #include "MathUtil.hpp"
 

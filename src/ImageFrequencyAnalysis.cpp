@@ -1,11 +1,11 @@
-#include "imgui/imgui.h"
-#include "imgui/imgui_impl_glfw.h"
-#include "imgui/imgui_impl_opengl3.h"
+#include <imgui.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_opengl3.h>
 #include <cstdio>
 #include <cstdlib>
 #include <stdexcept>
 
-#include <glad/glad.h>
+#include "glad/gl.h"
 #include <GLFW/glfw3.h>
 
 #include "AppContext.hpp"
@@ -86,7 +86,8 @@ void draw_input_image_window(GLFWwindow* window, std::unique_ptr<app_context> co
 	    const auto window_size = ImGui::GetWindowSize();
 	    const auto image_size = std::min(window_size.x, window_size.y - 20);
 	    const auto& input_image = gui_context->get_input_image();
-	    ImGui::Image((void*)(intptr_t)input_image->get_handle(), ImVec2(image_size, image_size));
+        ImTextureID texture_id = (ImTextureID)(intptr_t)input_image->get_handle();
+	    ImGui::Image(texture_id, ImVec2(image_size, image_size));
     ImGui::End();
     ImGui::PopStyleVar();
 }
@@ -104,7 +105,8 @@ void draw_dct_window(GLFWwindow* window, std::unique_ptr<app_context> const& gui
 	    const auto image_size = std::min(window_size.x, window_size.y);
 	    const auto input_image_dct = gui_context->get_input_dct_image();
         gui_context->get_mask_image()->use_texture();
-	    ImGui::Image((void*)(intptr_t)input_image_dct->get_handle(), ImVec2(image_size, image_size));
+        ImTextureID texture_id = (ImTextureID)(intptr_t)input_image_dct->get_handle();
+        ImGui::Image(texture_id, ImVec2(image_size, image_size));
 	    gui_context->draw_editing_window = true;
     ImGui::End();
 }
@@ -121,7 +123,8 @@ void draw_output_window(GLFWwindow* window, std::unique_ptr<app_context> const& 
 	    const auto window_size = ImGui::GetWindowSize();
 	    const auto image_size = std::min(window_size.x, window_size.y);
 	    const auto output_image_dct = gui_context->get_output_image();
-	    ImGui::Image((void*)(intptr_t)output_image_dct->get_handle(), ImVec2(image_size, image_size));
+        ImTextureID texture_id = (ImTextureID)(intptr_t)output_image_dct->get_handle();
+	    ImGui::Image(texture_id, ImVec2(image_size, image_size));
     ImGui::End();
 }
 
@@ -205,7 +208,7 @@ int main(int, char**)
     glfwSwapInterval(1); // Enable v-sync
 
 	// GLAD
-    if (!gladLoadGL())
+    if (!gladLoaderLoadGL())
     {
         fprintf(stderr, "Failed to initialize OpenGL loader!\n");
         return -1;

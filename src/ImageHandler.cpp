@@ -1,11 +1,10 @@
 #include "ImageHandler.hpp"
 #include "MathUtil.hpp"
 
-#include "glad/glad.h"
-
+#include <glad/gl.h>
 
 #define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
+#include "stb_image.h"
 
 #include <iostream>
 #include <stdexcept>
@@ -75,7 +74,7 @@ void image_handler::bind_texture()
 	
     glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, (num_channels_ == 1) ? bw_swizzle_mask : rgb_swizzle_mask);
 	
-    glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+    //glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 
     update_texture();
 }
