@@ -5,6 +5,10 @@
 
 app_context::app_context()
 {
+}
+
+void app_context::Init()
+{
 	filename_buffer_ = std::vector<char>(200, 0);
 
 

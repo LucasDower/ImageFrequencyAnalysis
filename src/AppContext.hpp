@@ -17,6 +17,7 @@ class app_context
 public:
 	// TODO: Allow buffer resizing
 	app_context();
+	void Init();
 	void load_input_image();
 	void perform_input_dct();
 	void destroy_buffers();

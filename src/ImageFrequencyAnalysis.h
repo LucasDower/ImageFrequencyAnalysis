@@ -1,9 +1,19 @@
 ﻿#pragma once
 
-void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
-void framebufferSizeCallback(GLFWwindow* window, int width, int height);
-void processInput(GLFWwindow* window);
-void cursorPositionCallback(GLFWwindow* window, double xpos, double pos);
-void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
-void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
-void updateView();
+void square_resize_callback(ImGuiSizeCallbackData* data);
+
+void draw_input_window(GLFWwindow* window, app_context& gui_context);
+
+void draw_input_image_window(GLFWwindow* window, app_context& gui_context);
+
+void draw_dct_window(GLFWwindow* window, app_context& gui_context);
+
+void draw_output_window(GLFWwindow* window, app_context& gui_context);
+
+void setup_windows(GLFWwindow* window, app_context& gui_context);
+
+void draw_editing_window(app_context& gui_context);
+
+void handle_editor_input(GLFWwindow* window, app_context& gui_context);
+
+void display(GLFWwindow* window, app_context& gui_context);
