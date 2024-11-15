@@ -1,6 +1,10 @@
 # ImageFrequencyAnalysis
-A simple tool to transform images into the frequency domain and provide an interface to edit them with masks.
 
-:warning: **This repo is not ready.** Most progress will be on [/redesign](https://github.com/LucasDower/ImageFrequencyAnalysis/tree/redesign).
+A simple tool to perform frequency domain notch filters on images with [periodic noise](https://en.wikipedia.org/wiki/Image_noise#Periodic_noise).
 
-![](resources/teaser.png)
+## Usage
+
+Load an image and use the cursor to draw notch masks on the canvas.
+
+
+![Thumbnail](resources/teaser.png)
