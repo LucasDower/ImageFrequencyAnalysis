@@ -6,7 +6,6 @@
 class Application
 {
 public:
-
     Application() = default;
     ~Application();
 
@@ -15,8 +14,6 @@ public:
     void MainLoop();
 
 private:
-    void HandleFrame();
-
     GLFWwindow* m_Window;
-    app_context m_Context;
+    AppContext m_Context;
 };
