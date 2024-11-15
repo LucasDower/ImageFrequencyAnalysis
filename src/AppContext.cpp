@@ -2,179 +2,152 @@
 
 #include <stdexcept>
 #include <fstream>
+#include <iostream>
 
-app_context::app_context()
+#include <imgui.h>
+#include <imgui_internal.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_opengl3.h>
+
+#include "Image.hpp"
+#include "ImageDCT.hpp"
+
+AppContext::AppContext()
+	: m_RequestLoadInputImage(false)
 {
-	filename_buffer_ = std::vector<char>(200, 0);
-
-
-	glGenVertexArrays(1, &vao_);
-	glBindVertexArray(vao_);
-
-	glGenBuffers(1, &vbo_);
-	
-	float editor_vertices[] = {
-		//  Position              Tex-coords
-			-0.9f,  0.9f, 0.0f, 0.0f, // Top-left
-			 0.9f,  0.9f, 1.0f, 0.0f, // Top-right
-			 0.9f, -0.9f,  1.0f, 1.0f, // Bottom-right
-			-0.9f, -0.9f, 0.0f, 1.0f  // Bottom-left
-	};
-
-	glBindBuffer(GL_ARRAY_BUFFER, vbo_);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(editor_vertices), editor_vertices, GL_STATIC_DRAW);
-
-	glGenBuffers(1, &ebo_);
-
-	GLuint elements[] = {
-		0, 1, 2,
-		2, 3, 0
-	};
-
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(elements), elements, GL_STATIC_DRAW);
-
-	const GLchar* vertex_source = R"glsl(
-    #version 150 core
-    in vec2 position;
-    in vec2 texcoord;
-    out vec2 Texcoord;
-	uniform float aspect;
-    void main()
-    {
-        Texcoord = texcoord;
-        gl_Position = vec4(position.x / aspect, position.y, 0.0, 1.0);
-    }
-	)glsl";
-	GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-	glShaderSource(vertex_shader, 1, &vertex_source, NULL);
-	glCompileShader(vertex_shader);
-
-	const GLchar* fragment_source = R"glsl(
-    #version 150 core
-    in vec2 Texcoord;
-    out vec4 outColor;
-    uniform sampler2D tex;
-    void main()
-    {
-        outColor = texture(tex, Texcoord) * vec4(1.0, 1.0, 1.0, 1.0);
-    }
-	)glsl";
-	GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-	glShaderSource(fragment_shader, 1, &fragment_source, NULL);
-	glCompileShader(fragment_shader);
-
-	// Link the vertex and fragment shader into a shader program
-	shader_program = glCreateProgram();
-	glAttachShader(shader_program, vertex_shader);
-	glAttachShader(shader_program, fragment_shader);
-	glBindFragDataLocation(shader_program, 0, "outColor");
-	glLinkProgram(shader_program);
-	glUseProgram(shader_program);
-
-	// Specify the layout of the vertex data
-	const auto pos_attrib = glGetAttribLocation(shader_program, "position");
-	glEnableVertexAttribArray(pos_attrib);
-	glVertexAttribPointer(pos_attrib, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), 0);
-
-	const auto tex_attrib = glGetAttribLocation(shader_program, "texcoord");
-	glEnableVertexAttribArray(tex_attrib);
-	glVertexAttribPointer(tex_attrib, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (void*)(2 * sizeof(GLfloat)));
 }
 
-void app_context::load_input_image()
+void AppContext::Init()
 {
-	try
+	FilenameBuffer = std::vector<char>(256);
+}
+
+bool PendingUpdate = false;
+
+void AppContext::Update()
+{
+	if (m_RequestLoadInputImage)
 	{
-		input_image_ = std::make_unique<image_handler>(&filename_buffer_[0]);
+		const std::string Filepath(FilenameBuffer.begin(), FilenameBuffer.end());
+		m_InputImage = Image::Load(Filepath);
+
+		if (m_InputImage.IsValid())
+		{
+			m_InputTexture = Texture::Load(m_InputImage, Texture::Filtering::Linear);
+
+			m_DCTImage = ImageDCT::Transform(m_InputImage);
+			
+			m_DCTNormalisedImage = ImageDCT::NormalizeDCTImage(m_DCTImage);
+			m_DCTNormalisedTexture = Texture::Load(m_DCTNormalisedImage, Texture::Filtering::Nearest);
+
+			m_OutputImage = ImageDCT::InverseTransform(m_DCTImage);
+			m_OutputTexture = Texture::Load(m_OutputImage, Texture::Filtering::Linear);
+		}
+		else
+		{
+			m_InputTexture.Reset();
+		}
+
+		m_RequestLoadInputImage = false;
 	}
-	catch (std::invalid_argument& ex)
+
+	if (!ImGui::IsMouseDown(0) && PendingUpdate)
 	{
-		input_image_error_ = std::string(ex.what());
-		input_image_state_ = image_state::failed;
-		return;
+		m_DCTNormalisedImage = ImageDCT::NormalizeDCTImage(m_DCTImage);
+		m_DCTNormalisedTexture = Texture::Load(m_DCTNormalisedImage, Texture::Filtering::Nearest);
+
+		m_OutputImage = ImageDCT::InverseTransform(m_DCTImage);
+		m_OutputTexture = Texture::Load(m_OutputImage, Texture::Filtering::Linear);
+
+		PendingUpdate = false;
 	}
-	
-	input_image_state_ = image_state::loaded;
 }
 
-void app_context::perform_input_dct()
+
+void AppContext::Render(GLFWwindow& Window)
 {
-	if (input_image_state_ != image_state::loaded)
+	glClear(GL_COLOR_BUFFER_BIT);
+
+	ImGui_ImplOpenGL3_NewFrame();
+	ImGui_ImplGlfw_NewFrame();
+	ImGui::NewFrame();
+
+	ImGuiViewport* Viewport = ImGui::GetMainViewport();
+	ImGui::SetNextWindowPos(Viewport->Pos);
+	ImGui::SetNextWindowSize(Viewport->Size);
+	ImGui::SetNextWindowViewport(Viewport->ID);
+
+	const ImGuiWindowFlags WindowFlags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse |
+		ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+		ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus |
+		ImGuiWindowFlags_NoBackground;
+
+	ImGui::Begin("MainDockSpace", nullptr, WindowFlags);
 	{
-		return;
+		ImGuiID DockSpaceId = ImGui::GetID("MainDockSpace");
+
+		ImGui::DockSpace(DockSpaceId, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
 	}
-	// TODO: Replace with copy constructor
-	auto input_image_data = input_image_->get_channels();
-	input_image_dct_ = std::make_unique<image_handler>(std::move(input_image_data), input_image_->get_width(), input_image_->get_height(), input_image_->get_num_channels());
-	input_image_dct_state_ = image_state::loaded;
+	ImGui::End();
 
-	// TODO: Add2^n exception handling for images not of size 2^n
-	input_image_dct_->apply_dct();
-
-	// TODO: Replace with copy constructor
-	auto dct_data = input_image_dct_->get_channels();
-	auto linear_data = input_image_dct_->get_linear_data();
-	mask_ = std::make_unique<masked_image_handler>(std::move(dct_data), linear_data, input_image_->get_width(), input_image_->get_height(), input_image_->get_num_channels());
-	mask_state_ = image_state::loaded;
-}
-
-void app_context::destroy_buffers()
-{
-	// TODO: Destroy VAO, VBO, EBO
-	input_image_->destroy_buffer();
-	input_image_dct_->destroy_buffer();
-}
-
-void app_context::handle_editor()
-{
-	int editor_x, editor_y;
-	get_editor_cursor_pos(editor_x, editor_y);
-	//printf("%d, %d\n", editor_x, editor_y);
-	mask_->set_pixel(editor_x, editor_y, 0, 3);
-	mask_->update_texture();
-}
-
-void app_context::update_inverse()
-{
-	auto image = mask_->get_output_image();
-	output_image_ = std::make_unique<image_handler>(std::move(image), mask_->get_width(), mask_->get_height(), mask_->get_num_channels());
-	output_state_ = image_state::loaded;
-}
-
-std::string app_context::get_input_image_error() const
-{
-	return input_image_error_;
-}
-
-void app_context::get_editor_cursor_pos(int& editor_cursor_x, int& editor_cursor_y) const
-{
-	if (input_image_dct_state_ == image_state::loaded)
+	// Draw Input Window
+	ImGui::Begin("Input Window", nullptr);
 	{
-		const auto w = static_cast<double>(display_width);
-		const auto h = static_cast<double>(display_height);
-		auto x = (cursor_x - w / 2.0) / w;
-		auto y = (cursor_y - h / 2.0) / h;
-		x *= get_aspect_ratio();
-		x /= 0.9;
-		y /= 0.9;
-		const auto im_w = get_input_dct_image()->get_width();
-		const auto im_h = get_input_dct_image()->get_height();
-		editor_cursor_x = static_cast<int>((x + 0.5) * im_w);
-		editor_cursor_y = static_cast<int>((y + 0.5) * im_h);
-		return;
+		ImGui::InputText("Filename", &FilenameBuffer.data()[0], FilenameBuffer.size(), 0, nullptr, nullptr);
+
+		if (ImGui::Button("Load"))
+		{
+			m_RequestLoadInputImage = true;
+		}
+
+		if (m_InputImage.IsValid())
+		{
+			ImGui::Text("Image Loaded!");
+		}
+
+		if (m_InputTexture.IsValid())
+		{
+			ImGui::Image((ImTextureID)(intptr_t)m_InputTexture.GetTextureId(), ImVec2(m_InputImage.GetWidth(), m_InputImage.GetHeight()));
+		}
+
+		if (m_OutputTexture.IsValid())
+		{
+			ImGui::Image((ImTextureID)(intptr_t)m_OutputTexture.GetTextureId(), ImVec2(m_OutputImage.GetWidth(), m_OutputImage.GetHeight()));
+		}
 	}
-	editor_cursor_x = -1;
-	editor_cursor_y = -1;
-}
+	ImGui::End();
 
-ImVec2 app_context::get_max_window_size() const
-{
-	const auto min_size = static_cast<float>(std::min(display_width, display_height));
-	return ImVec2(min_size - 50.0f, min_size - 50.0f);
-}
+	// Draw Input Image
+	ImGui::Begin("Input Image", nullptr);
+	{
+		if (m_DCTNormalisedTexture.IsValid())
+		{
+			ImVec2 WindowSize = ImGui::GetContentRegionAvail();
+			WindowSize.x = std::min(WindowSize.x, WindowSize.y);
+			WindowSize.y = WindowSize.x;
 
-double app_context::get_aspect_ratio() const
-{
-	return static_cast<double>(display_width) / static_cast<double>(display_height);
+			const ImVec2 CursorScreenPos = ImGui::GetCursorScreenPos();
+			const ImVec2 MousePos = ImGui::GetMousePos();
+
+			ImVec2 RelativeMousePos = ImVec2((MousePos.x - CursorScreenPos.x) / WindowSize.x, (MousePos.y - CursorScreenPos.y) / WindowSize.y);
+
+			if (ImGui::IsMouseDown(0) && RelativeMousePos.x < 1.0 && RelativeMousePos.x > 0.0 && RelativeMousePos.y < 1.0 && RelativeMousePos.y > 0.0)
+			{
+				const int32_t X = m_DCTImage.GetWidth() * RelativeMousePos.x;
+				const int32_t Y = m_DCTImage.GetHeight() * RelativeMousePos.y;
+
+				for (int32_t ChannelIndex = 0; ChannelIndex < std::min(m_DCTImage.GetChannels(), 3); ++ChannelIndex)
+				{
+					m_DCTImage.GetMutableData()[m_DCTImage.GetChannels() * (Y * m_DCTImage.GetWidth() + X) + ChannelIndex] = 0;
+				}
+				PendingUpdate = true;
+			}
+				
+			ImGui::Image((ImTextureID)(intptr_t)m_DCTNormalisedTexture.GetTextureId(), WindowSize);
+		}
+	}
+	ImGui::End();
+
+	ImGui::Render();
+	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
